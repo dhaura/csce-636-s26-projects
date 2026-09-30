@@ -151,6 +151,7 @@ activemq-data/
 .env
 .envrc
 .venv
+*/.conda-env/
 env/
 venv/
 ENV/
@@ -216,3 +217,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Data Files
+*/data/*

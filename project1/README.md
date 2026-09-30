@@ -14,3 +14,5 @@ This folder provides a quick Jupyter Notebook setup for deep learning developmen
    jupyter lab
    ```
 4. Open `project1_starter.ipynb` and begin iterating on your model.
+
+For additional m-height training data, see [GENERATION.md](GENERATION.md) for the generator, checkpoint/resume behavior, dependency, and Perlmutter submission instructions.
