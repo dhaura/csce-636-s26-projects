@@ -1,0 +1,7 @@
+jupyterlab
+ipykernel
+numpy
+matplotlib
+torch
+torchvision
+torchaudio
