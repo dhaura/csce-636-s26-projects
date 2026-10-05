@@ -39,7 +39,9 @@ FEATURES = "CSCE-636-Project-1-Train-n_k_m_P"
 LABELS = "CSCE-636-Project-1-Train-mHeights"
 EXT_FEATURES = "CSCE-636-Project-1-Train-Extended-n_k_m_P"
 EXT_LABELS = "CSCE-636-Project-1-Train-Extended-mHeights"
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
+K_VALUES = (4, 5, 6)
+MAX_ENTRY = 100
 STOP_REQUESTED = False
 # Precompute the combinatorial structure once in each process.
 SUBSETS = {
@@ -114,35 +116,68 @@ def compute_m_height(G, m):
     return best
 
 
-def matrix_k(matrix_id, remaining):
-    """Cycle k=4,5,6; adjust the final groups to hit an exact row count.
+def matrix_k(matrix_id):
+    """Cycle k=4,5,6 so every k gets the same number of sampled matrices."""
+    return K_VALUES[matrix_id % 3]
 
-    One matrix yields 4,3,2 rows respectively. Never discard an m value.
-    A requested total of one row is therefore impossible.
+
+def empirical_scales(features):
+    """Count, per k, the per-matrix max|P| of the original data.
+
+    Every original matrix has an m=2 row, so those rows enumerate the matrices.
+    The original entries are integers in [-100, 100]; the scale is therefore an
+    integer, and each new matrix draws one from this histogram.
     """
-    if remaining < 2:
-        raise ValueError("A matrix needs at least two output rows")
-    size = min(8 - (4, 5, 6)[matrix_id % 3], remaining)
-    if remaining - size == 1:
-        size = 3 if size == 2 else size - 1
-    return 8 - size
+    counts = {k: [0] * (MAX_ENTRY + 1) for k in K_VALUES}
+    for n, k, m, P in features:
+        if m != 2:
+            continue
+        scale = float(np.max(np.abs(P)))
+        if n != N or k not in counts or scale != round(scale) or not 0 <= scale <= MAX_ENTRY:
+            raise ValueError("Original data must contain integer entries in [-100, 100]")
+        counts[k][int(scale)] += 1
+    if any(sum(row[1:]) == 0 for row in counts.values()):
+        raise ValueError("Original data lacks nonzero matrices for some k")
+    return {str(k): row for k, row in counts.items()}
+
+
+def sample_matrix(rng, k, distribution, scale_counts):
+    """Draw P, resampling if a column of G would be all zero (excluded by the spec)."""
+    while True:
+        if distribution == "empirical":
+            weights = np.asarray(scale_counts, dtype=np.float64)
+            weights[0] = 0.0  # a zero scale gives all-zero columns
+            scale = int(rng.choice(MAX_ENTRY + 1, p=weights / weights.sum()))
+            P = rng.integers(-scale, scale + 1, size=(k, N - k)).astype(np.float64)
+        elif distribution == "integer":
+            P = rng.integers(-MAX_ENTRY, MAX_ENTRY + 1, size=(k, N - k)).astype(np.float64)
+        else:
+            P = rng.uniform(-MAX_ENTRY, MAX_ENTRY, size=(k, N - k))
+        if np.all(np.any(P != 0, axis=0)):
+            return P
 
 
 def generate_matrix(task):
-    matrix_id, k, seed, distribution = task
+    """Label m=2,3,... until the first infinite m-height.
+
+    m-heights are nondecreasing in m, so every larger m is infinite as well.
+    Like the original data and the test set, only finite rows are kept.
+    A matrix whose 2-height is infinite therefore contributes no rows.
+    """
+    matrix_id, k, seed, distribution, scale_counts = task
     rng = np.random.default_rng(np.random.SeedSequence([seed, matrix_id]))
-    if distribution == "integer":
-        P = rng.integers(-100, 101, size=(k, N - k)).astype(np.float64)
-    else:
-        P = rng.uniform(-100.0, 100.0, size=(k, N - k))
+    P = sample_matrix(rng, k, distribution, scale_counts)
     G = np.concatenate((np.eye(k), P), axis=1)
     features, labels = [], []
     for m in range(2, N - k + 1):
-        features.append([N, k, m, P])
         try:
-            labels.append(compute_m_height(G, m))
+            height = compute_m_height(G, m)
         except Exception as exc:
             raise RuntimeError(f"Matrix {matrix_id}, k={k}, m={m}: {exc}") from exc
+        if math.isinf(height):
+            break
+        features.append([N, k, m, P])
+        labels.append(height)
     return matrix_id, features, labels
 
 
@@ -211,10 +246,16 @@ def run_config(args):
         path = (args.input_dir / name).resolve()
         log(f"Fingerprinting input {path}")
         inputs.append({"path": str(path), "sha256": sha256(path)})
+    scale_counts = None
+    if args.distribution == "empirical":
+        log("Measuring per-matrix scales of the original data")
+        with (args.input_dir / FEATURES).open("rb") as file:
+            scale_counts = empirical_scales(pickle.load(file))
     return {
         "format": FORMAT_VERSION, "new_samples": args.new_samples,
         "seed": args.seed, "distribution": args.distribution,
-        "n": N, "k_order": [4, 5, 6], "matrix_range": [-100, 100],
+        "scale_counts": scale_counts, "finite_only": True,
+        "n": N, "k_order": list(K_VALUES), "matrix_range": [-MAX_ENTRY, MAX_ENTRY],
         "numpy": np.__version__, "scipy": scipy.__version__,
         "solver": "highs-ds", "lp_tolerance": 1e-8, "inputs": inputs,
     }
@@ -245,69 +286,70 @@ def read_checkpoint(path, run_id, expected_matrix):
     if (data["run_id"] != run_id or data["start_matrix"] != expected_matrix or
             data["next_matrix"] <= expected_matrix or
             len(data["features"]) != len(data["labels"]) or
-            len(data["features"]) != data["sample_count"]):
+            len(data["features"]) != data["sample_count"] or
+            len(data["group_sizes"]) != data["next_matrix"] - data["start_matrix"] or
+            sum(data["group_sizes"]) != data["sample_count"]):
         raise ValueError(f"Invalid or noncontiguous checkpoint: {path}")
     if path.name != f"checkpoint-{expected_matrix:012d}.pkl":
         raise ValueError(f"Checkpoint name disagrees with content: {path}")
     return data
 
 
-def resume_state(directory, run_id, target):
+def resume_state(directory, run_id):
     matrix_id, samples = 0, 0
     for path in checkpoint_paths(directory):
         data = read_checkpoint(path, run_id, matrix_id)
-        # Check complete matrix groups against the deterministic task schedule.
+        # Each matrix stores its finite rows m=2,3,...; the group may be empty.
         index = 0
-        while matrix_id < data["next_matrix"]:
-            k = matrix_k(matrix_id, target - samples)
-            size = 8 - k
+        for size in data["group_sizes"]:
+            k = matrix_k(matrix_id)
             group = data["features"][index:index + size]
-            if len(group) != size:
-                raise ValueError(f"Incomplete matrix group in {path}")
-            P = group[0][3]
+            if not 0 <= size <= N - k - 1 or len(group) != size:
+                raise ValueError(f"Invalid matrix group in {path}")
             for offset, (n, stored_k, m, matrix) in enumerate(group):
                 if (n != N or stored_k != k or m != offset + 2 or
                         not isinstance(matrix, np.ndarray) or matrix.shape != (k, N - k) or
                         not np.isfinite(matrix).all() or
-                        not np.array_equal(matrix, P)):
+                        not np.array_equal(matrix, group[0][3])):
                     raise ValueError(f"Invalid feature group in {path}")
             labels = np.asarray(data["labels"][index:index + size], dtype=float)
-            if np.isnan(labels).any() or (labels < 1 - 1e-6).any():
+            if not np.isfinite(labels).all() or (labels < 1 - 1e-6).any():
                 raise ValueError(f"Invalid labels in {path}")
             index += size
             samples += size
             matrix_id += 1
-        if index != data["sample_count"] or samples > target:
-            raise ValueError(f"Invalid sample count in {path}")
     return matrix_id, samples
 
 
-def generate(args, directory, run_id, next_matrix, saved_samples):
+def generate(args, config, directory, run_id, next_matrix, saved_samples):
     """Bound the outstanding work and commit results in matrix-ID order."""
     start = time.monotonic()
     checkpoint_time = progress_time = start
     start_samples = saved_samples
     checkpoint_start = next_matrix
-    buffer_features, buffer_labels = [], []
+    buffer_features, buffer_labels, buffer_sizes = [], [], []
     submitted_matrix = next_matrix
-    scheduled_samples = saved_samples
     pending = deque()
+    scale_counts = config["scale_counts"]
 
     def flush():
         nonlocal checkpoint_start, checkpoint_time
-        if not buffer_features:
+        if not buffer_sizes:
             return
         path = directory / f"checkpoint-{checkpoint_start:012d}.pkl"
         atomic_write(path, {
             "run_id": run_id, "start_matrix": checkpoint_start,
             "next_matrix": next_matrix, "sample_count": len(buffer_features),
+            "group_sizes": buffer_sizes,
             "features": buffer_features, "labels": buffer_labels,
         })
-        infinite = sum(math.isinf(x) for x in buffer_labels)
+        dropped = sum(N - matrix_k(i) - 1 - size
+                      for i, size in enumerate(buffer_sizes, checkpoint_start))
         log(f"Checkpoint committed: {saved_samples:,}/{args.new_samples:,} new rows; "
-            f"{infinite} infinite labels in this checkpoint")
+            f"{dropped} infinite-height rows skipped in this checkpoint")
         buffer_features.clear()
         buffer_labels.clear()
+        buffer_sizes.clear()
         checkpoint_start = next_matrix
         checkpoint_time = time.monotonic()
 
@@ -319,12 +361,14 @@ def generate(args, directory, run_id, next_matrix, saved_samples):
             if args.max_seconds and now - start >= args.max_seconds:
                 log("Run time budget reached; saving completed work")
                 break
-            while len(pending) < 2 * args.workers and scheduled_samples < args.new_samples:
-                k = matrix_k(submitted_matrix, args.new_samples - scheduled_samples)
-                task = (submitted_matrix, k, args.seed, args.distribution)
+            # Rows per matrix are unknown in advance; stop after the matrix that
+            # reaches the target. Extra in-flight results are discarded.
+            while len(pending) < 2 * args.workers:
+                k = matrix_k(submitted_matrix)
+                counts = scale_counts[str(k)] if scale_counts else None
+                task = (submitted_matrix, k, args.seed, args.distribution, counts)
                 pending.append(pool.apply_async(generate_matrix, (task,)))
                 submitted_matrix += 1
-                scheduled_samples += 8 - k
             try:
                 matrix_id, features, labels = pending[0].get(timeout=1.0)
             except mp.TimeoutError:
@@ -335,10 +379,11 @@ def generate(args, directory, run_id, next_matrix, saved_samples):
                     raise RuntimeError("Worker results out of order")
                 buffer_features.extend(features)
                 buffer_labels.extend(labels)
+                buffer_sizes.append(len(features))
                 saved_samples += len(features)
                 next_matrix += 1
             now = time.monotonic()
-            if (len(buffer_features) >= args.batch_size or
+            if buffer_sizes and (len(buffer_features) >= args.batch_size or
                     now - checkpoint_time >= args.checkpoint_seconds):
                 flush()
             if now - progress_time >= args.progress_seconds:
@@ -386,8 +431,10 @@ def merge_outputs(args, directory, run_id):
         labels.extend(data["labels"])
         next_matrix = data["next_matrix"]
     expected = original_count + args.new_samples
-    if len(features) != expected or len(labels) != expected:
-        raise ValueError("Merged count does not match the requested total")
+    if len(features) < expected or len(labels) != len(features):
+        raise ValueError("Merged count is below the requested total")
+    # The last matrix may overshoot; dropping its largest-m rows keeps a valid prefix.
+    del features[expected:], labels[expected:]
     if STOP_REQUESTED:
         return False
     atomic_write(directory / EXT_FEATURES, features)
@@ -412,9 +459,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-dir", type=Path, default=Path(__file__).resolve().parent / "data")
     root = os.environ.get("SCRATCH") or os.environ.get("CFS")
-    default_output = Path(root) / "csce636-project1-generation" if root else None
+    default_output = Path(root) / "csce636-project1-generation-v2" if root else None
     parser.add_argument("--output-dir", type=Path, default=default_output,
-                        help="SCRATCH/CFS directory; default $SCRATCH/csce636-project1-generation")
+                        help="SCRATCH/CFS directory; default $SCRATCH/csce636-project1-generation-v2")
     parser.add_argument("--new-samples", type=int, default=DEFAULT_NEW_SAMPLES)
     parser.add_argument("--workers", type=int, default=1,
                         help="Worker processes; Slurm script uses 64")
@@ -425,10 +472,13 @@ def parse_args():
     parser.add_argument("--max-seconds", type=float, default=0,
                         help="Stop generation after this many seconds, saving completed matrices")
     parser.add_argument("--seed", type=int, default=636)
-    parser.add_argument("--distribution", choices=("integer", "uniform"), default="integer")
+    parser.add_argument("--distribution", choices=("empirical", "integer", "uniform"),
+                        default="empirical",
+                        help="empirical: per-matrix scale a from the original data, "
+                             "then integers uniform in [-a, a]")
     args = parser.parse_args()
-    if args.new_samples < 2 or args.workers < 1 or args.batch_size < 1 or args.seed < 0:
-        parser.error("new-samples >= 2, workers/batch-size >= 1, and seed >= 0 are required")
+    if args.new_samples < 1 or args.workers < 1 or args.batch_size < 1 or args.seed < 0:
+        parser.error("new-samples >= 1, workers/batch-size >= 1, and seed >= 0 are required")
     if (not math.isfinite(args.checkpoint_seconds) or args.checkpoint_seconds <= 0 or
             not math.isfinite(args.progress_seconds) or args.progress_seconds <= 0 or
             not math.isfinite(args.max_seconds) or args.max_seconds < 0):
@@ -447,12 +497,12 @@ def main():
     with output_lock(directory):
         config = run_config(args)
         run_id = prepare_run(directory, config)
-        next_matrix, saved_samples = resume_state(directory, run_id, args.new_samples)
+        next_matrix, saved_samples = resume_state(directory, run_id)
         log(f"Resume: {saved_samples:,} rows, next matrix {next_matrix}; {args.workers} CPU workers")
         if STOP_REQUESTED:
             return 75
         if saved_samples < args.new_samples:
-            saved_samples = generate(args, directory, run_id, next_matrix, saved_samples)
+            saved_samples = generate(args, config, directory, run_id, next_matrix, saved_samples)
         if saved_samples < args.new_samples or STOP_REQUESTED:
             log("Stopped safely. Submit the same command to resume; exit code 75.")
             return 75

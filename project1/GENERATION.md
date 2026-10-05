@@ -14,29 +14,32 @@ python -m pip install scipy
 ## Generation and labels
 
 - Defaults to **3,833,203 new rows**, yielding **7,666,406 total** with the original dataset.
-- Uses `n=9`, cycles `k=4,5,6`, and computes **all** `m=2,...,9-k` for every matrix. Thus a matrix contributes 4, 3, or 2 rows. The final matrix groups are adjusted to reach the exact requested count. A target of one row is impossible and is rejected.
-- By default, entries of `P` are uniform integers from **−100 through 100 inclusive**, stored in float64 arrays. Use `--distribution uniform` for continuous uniform values in that range.
+- Uses `n=9` and cycles `k=4,5,6`, so each k gets the same number of sampled matrices.
+- **Matrix distribution (default `--distribution empirical`)**: the instructor's matrices are not uniform on [−100, 100]. Each has its own scale (per-matrix max |P| is multimodal: 5th percentile 9, median 81). The generator therefore counts the per-matrix max |P| of the original data for each k (stored as `scale_counts` in `run.json`). For each new matrix it draws a scale `a` from that histogram and draws integer entries uniformly from `[-a, a]`, stored as float64. This matches the original value histograms, zero fraction and row/column spread. `--distribution integer` (fixed `a=100`) and `uniform` (continuous) remain available.
+- Matrices with an all-zero `P` column are resampled, since the specification excludes all-zero columns of `G`.
+- **Finite labels only**, like the original data and the test set. For each matrix, m=2,3,... are labelled until the first infinite m-height; since m-heights are nondecreasing in m, every larger m is infinite and is not solved. A matrix therefore contributes 0 to 9−k−1 rows, always the prefix m=2,...; the original data has the same structure. Generation stops after the matrix that reaches the target, and the merge drops the overshoot rows (largest m of the last matrix).
 - Seeds are determined by the run seed and matrix ID. Changing the process count or checkpoint frequency on resume does not change the rows. Matrices are sampled independently; no deduplication against the original dataset is performed.
-- Constructs `G=[I|P]` and solves the specified LP for every subset and selected column. Variables `u` are explicitly free in sign. Central symmetry makes a second LP for the negative objective unnecessary.
-- Unbounded LPs produce **positive infinity**, a valid mathematical m-height. Integer matrices can be degenerate. These labels are retained, counted in checkpoint logs, and need an explicit filtering/handling policy before DNN regression. Numerical solver failures stop generation with the offending matrix ID instead of producing a made-up label. LP labels use floating-point solver tolerances, not symbolic exact arithmetic.
+- Constructs `G=[I|P]` and solves the specified LP for every subset and selected column. Variables `u` are explicitly free in sign. Central symmetry makes a second LP for the negative objective unnecessary. Re-solving random original rows reproduces the instructor labels to about 1e-13 in log2.
+- An LP is treated as unbounded (infinite height) only after a confirming solve without presolve. Numerical solver failures stop generation with the offending matrix ID instead of producing a made-up label. LP labels use floating-point solver tolerances, not symbolic exact arithmetic.
+- The outputs are pickled with NumPy 2. The notebook's `load_pickle` also reads them under NumPy 1.x (for example the TensorFlow 2.15 module).
 
 ## Perlmutter submission
 
-The supplied Slurm script requests **one GPU node, four GPUs, 128 logical CPUs (64 physical cores), all node memory, and 48 hours**. It starts **64 CPU worker processes**, each with one HiGHS/BLAS thread. SciPy HiGHS does not use GPUs; the GPU allocation is included as requested. For this workload, a CPU-node allocation would use resources more efficiently.
+The supplied Slurm script requests **one GPU node, four GPUs, 128 logical CPUs (64 physical cores), all node memory, and 16 hours** (a full run took about 8.7 hours). It starts **64 CPU worker processes**, each with one HiGHS/BLAS thread. SciPy HiGHS does not use GPUs; the GPU allocation is included as requested. For this workload, a CPU-node allocation would use resources more efficiently.
 
 These settings follow the [NERSC Perlmutter job guide](https://docs.nersc.gov/systems/perlmutter/running-jobs/), [CPU affinity guide](https://docs.nersc.gov/jobs/affinity/), and [queue limits](https://docs.nersc.gov/jobs/policy/). The LP interface and status codes are documented in [SciPy linprog](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.linprog.html).
 
 Run from the project directory, substituting your actual GPU allocation account:
 
 ```bash
-sbatch --account=YOUR_GPU_ACCOUNT run_generation.slurm
+sbatch --account=YOUR_GPU_ACCOUNT run_data_gen.sh
 ```
 
-The job activates `project1/.conda-env`. Checkpoints and final files default to `$SCRATCH/csce636-project1-generation`. To use CFS instead:
+The job activates `project1/.conda-env`. Checkpoints and final files default to `$SCRATCH/csce636-project1-generation-v2`. After a completed run the script copies the two extended files and `complete.json` (as `Extended-complete.json`) into `project1/data/`. To use CFS instead:
 
 ```bash
 export GENERATION_OUTPUT_DIR="$CFS/my-project/mheight-generation"
-sbatch --account=YOUR_GPU_ACCOUNT run_generation.slurm
+sbatch --account=YOUR_GPU_ACCOUNT run_data_gen.sh
 ```
 
 Use an actual project directory to which you have write access. The script rejects output paths in HOME or outside SCRATCH/CFS. Slurm logs are written to this repository's `project1/data/` on `/pscratch`; those paths in the Slurm header are specific to this checkout. Adjust the absolute header paths if relocating the project. The checkpoint directory must support file locking (Perlmutter scratch does).
@@ -45,12 +48,12 @@ A 10-minute generation benchmark on a compute node can use the same job script:
 
 ```bash
 sbatch --account=YOUR_GPU_ACCOUNT --time=00:20:00 \
-  run_generation.slurm --max-seconds 600
+  run_data_gen.sh --max-seconds 600
 ```
 
 This saves useful progress for the full target. Subsequent normal submissions continue it. A short independent end-to-end trial can instead use a separate output directory and `--new-samples 9`. Such a trial still loads the originals during the final merge; never change `--new-samples` in an existing run directory.
 
-The default schedule entails up to **1,111,629,168 LP solves** before any early exits for infinite heights. Completion within one job is not guaranteed. Progress logs report actual rows/second and an estimated remaining time. Benchmark on the allocated node before extrapolating runtime.
+The full schedule is roughly a billion LP solves (fewer, since solving stops at the first infinite height). Completion within one job is not guaranteed. Progress logs report actual rows/second and an estimated remaining time. Benchmark on the allocated node before extrapolating runtime.
 
 ## Checkpoint and resume behavior
 
