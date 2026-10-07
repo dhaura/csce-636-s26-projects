@@ -269,9 +269,12 @@ flowchart LR
       <tr><td><code>isic/data.py</code></td><td>Class definitions, label loading for each split, lesion-grouped CV folds, the image dataset, baseline and Gessert transforms, the class-weight helper and the grid multi-crop evaluator.</td></tr>
       <tr><td><code>isic/engine.py</code></td><td>One-epoch training loop and inference with bf16 mixed precision, crop averaging, seeding and saving of predictions and JSON.</td></tr>
       <tr><td><code>isic/models.py</code></td><td>Builds any timm backbone with a fresh 7-class head. Transformers get their position embeddings resized to the input size; optional gradient checkpointing.</td></tr>
+      <tr><td><code>isic/analysis.py</code></td><td>Reads finished runs for the notebooks: per-fold tables, summaries, paired differences, fold ensembles, curves and confusion plots.</td></tr>
+      <tr><td><code>ensemble_runs.py</code></td><td>Averages several runs' probabilities fold by fold and saves the result as a new run.</td></tr>
       <tr><td><code>isic/metrics.py</code></td><td>Balanced accuracy, accuracy, macro-F1, macro-AUC, per-class recall, melanoma sensitivity and specificity, and the confusion matrix.</td></tr>
       <tr class="group"><td colspan="2">Experiments</td></tr>
       <tr><td><code>01_baseline_resnet50.ipynb</code></td><td>The baseline as a readable notebook: data inspection, model, plain cross-entropy training, evaluation. It was executed and its outputs are saved in the notebook.</td></tr>
+      <tr><td><code>02_…05_*.ipynb</code></td><td>One notebook per later version: Gessert reproduction, imbalance handling, optimised ResNet-50, backbones and ensemble. Each explains the recipe, lists the commands, can re-run one fold, and analyses the saved results (tables, paired differences, curves, confusion matrices).</td></tr>
       <tr><td><code>train_classifier.py</code></td><td>The notebook recipe as a command-line script, one fold per run. Each option changes one factor (backbone, learning rate, loss weighting, resolution, augmentation, epochs) so experiments stay controlled.</td></tr>
       <tr><td><code>literature_baseline_gessert2018.py</code></td><td>Reproduction of Gessert et al. (2018), one fold per run. <code>--summarize</code> combines the five folds and scores the 5-model average on the test set.</td></tr>
       <tr><td><code>posthoc_logit_adjustment.py</code></td><td>Re-weights a finished run's saved probabilities by the class prior, with one strength τ tuned on the CV folds. Writes the result as a new run.</td></tr>

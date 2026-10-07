@@ -31,8 +31,13 @@ hwx/
 │   ├── data.py                    # label loading, lesion-grouped CV folds, Dataset, transforms, multi-crop
 │   ├── engine.py                  # train / predict loops (bf16 autocast), I/O helpers
 │   ├── metrics.py                 # balanced accuracy, AUC, per-class recall, melanoma sens/spec
-│   └── models.py                  # timm backbone builder (input-size-aware for transformers)
+│   ├── models.py                  # timm backbone builder (input-size-aware for transformers)
+│   └── analysis.py                # loads finished runs: per-fold tables, paired diffs, ensembles, plots
 ├── 01_baseline_resnet50.ipynb     # our baseline: ImageNet ResNet-50, plain cross-entropy
+├── 02_literature_baseline_gessert2018.ipynb  # version 2: Gessert et al. reproduction (results + optional 1-fold rerun)
+├── 03_imbalance_handling.ipynb    # version 3: weighted CE vs post-hoc logit adjustment
+├── 04_optimised_resnet50.ipynb    # version 4: round 2 (resolution, TTA, epochs, augmentation) -> optimised ResNet-50
+├── 05_backbones_and_ensemble.ipynb # version 5: round 3 (stronger backbones, LR pilot, cross-backbone ensemble)
 ├── literature_baseline_gessert2018.py   # literature baseline: Gessert et al. 2018 single-model recipe
 ├── train_classifier.py            # notebook-01 recipe as a CLI (one fold per run, one factor changed per flag)
 ├── compare_runs.py                # multi-fold comparison on the official test set + paired per-fold differences
@@ -66,6 +71,13 @@ salloc -A m4012 -C gpu -q interactive -N 1 -G 4 -t 03:00:00 srun -n 1 -c 128 -G 
 > scripts below or interactively (`salloc -A m4012 -C gpu -q interactive -G 1 -c 32 -t 1:00:00`, or a GPU
 > node on jupyter.nersc.gov with the *Python (isic-hwx)* kernel). `$PSCRATCH` purges files not accessed for
 > 8 weeks — copy `results/` somewhere permanent before the deadline.
+
+## Notebooks: one per version
+
+Each version of the model has a notebook that explains the recipe, lists the commands that produced it and analyses
+the saved results: per-fold tables, paired comparisons, training curves and confusion matrices. They run in about a
+minute on a login node because they read `results/`. Set `RUN_TRAINING = True` on a GPU node to re-create one fold
+first. Notebook 01 is the baseline written out step by step, with its own training loop.
 
 ## Data and splits
 
