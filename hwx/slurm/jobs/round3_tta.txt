@@ -1,0 +1,5 @@
+# Round 3 phase 2: 20-view TTA on each backbone's checkpoints. Longest first.
+dinov2_b14_res448-tta20 python -u evaluate_tta.py dinov2_b14_res448 --crops 5 --num-workers 16
+convnext_s_res448-tta20 python -u evaluate_tta.py convnext_s_res448 --crops 5 --num-workers 16
+vit_b16_res448-tta20 python -u evaluate_tta.py vit_b16_res448 --crops 5 --num-workers 16
+effv2_s_res448-tta20 python -u evaluate_tta.py effv2_s_res448 --crops 5 --num-workers 16

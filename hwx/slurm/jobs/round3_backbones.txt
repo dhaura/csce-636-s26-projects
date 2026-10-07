@@ -1,0 +1,22 @@
+# Round 3 phase 2: stronger backbones in the optimised recipe (448 px, plain CE, 30 epochs), all 5 folds.
+# LR per backbone from the fold-0 pilot (round3_pilot.txt). Longest jobs first.
+dinov2_b14_res448-fold0 python -u train_classifier.py --run-name dinov2_b14_res448 --model vit_base_patch14_dinov2.lvd142m --lr 5e-5 --img-size 448 --fold 0 --num-workers 16
+dinov2_b14_res448-fold1 python -u train_classifier.py --run-name dinov2_b14_res448 --model vit_base_patch14_dinov2.lvd142m --lr 5e-5 --img-size 448 --fold 1 --num-workers 16
+dinov2_b14_res448-fold2 python -u train_classifier.py --run-name dinov2_b14_res448 --model vit_base_patch14_dinov2.lvd142m --lr 5e-5 --img-size 448 --fold 2 --num-workers 16
+dinov2_b14_res448-fold3 python -u train_classifier.py --run-name dinov2_b14_res448 --model vit_base_patch14_dinov2.lvd142m --lr 5e-5 --img-size 448 --fold 3 --num-workers 16
+dinov2_b14_res448-fold4 python -u train_classifier.py --run-name dinov2_b14_res448 --model vit_base_patch14_dinov2.lvd142m --lr 5e-5 --img-size 448 --fold 4 --num-workers 16
+convnext_s_res448-fold0 python -u train_classifier.py --run-name convnext_s_res448 --model convnext_small.fb_in22k_ft_in1k --lr 2e-4 --img-size 448 --fold 0 --num-workers 16
+convnext_s_res448-fold1 python -u train_classifier.py --run-name convnext_s_res448 --model convnext_small.fb_in22k_ft_in1k --lr 2e-4 --img-size 448 --fold 1 --num-workers 16
+convnext_s_res448-fold2 python -u train_classifier.py --run-name convnext_s_res448 --model convnext_small.fb_in22k_ft_in1k --lr 2e-4 --img-size 448 --fold 2 --num-workers 16
+convnext_s_res448-fold3 python -u train_classifier.py --run-name convnext_s_res448 --model convnext_small.fb_in22k_ft_in1k --lr 2e-4 --img-size 448 --fold 3 --num-workers 16
+convnext_s_res448-fold4 python -u train_classifier.py --run-name convnext_s_res448 --model convnext_small.fb_in22k_ft_in1k --lr 2e-4 --img-size 448 --fold 4 --num-workers 16
+vit_b16_res448-fold0 python -u train_classifier.py --run-name vit_b16_res448 --model vit_base_patch16_224.augreg2_in21k_ft_in1k --lr 5e-5 --img-size 448 --fold 0 --num-workers 16
+vit_b16_res448-fold1 python -u train_classifier.py --run-name vit_b16_res448 --model vit_base_patch16_224.augreg2_in21k_ft_in1k --lr 5e-5 --img-size 448 --fold 1 --num-workers 16
+vit_b16_res448-fold2 python -u train_classifier.py --run-name vit_b16_res448 --model vit_base_patch16_224.augreg2_in21k_ft_in1k --lr 5e-5 --img-size 448 --fold 2 --num-workers 16
+vit_b16_res448-fold3 python -u train_classifier.py --run-name vit_b16_res448 --model vit_base_patch16_224.augreg2_in21k_ft_in1k --lr 5e-5 --img-size 448 --fold 3 --num-workers 16
+vit_b16_res448-fold4 python -u train_classifier.py --run-name vit_b16_res448 --model vit_base_patch16_224.augreg2_in21k_ft_in1k --lr 5e-5 --img-size 448 --fold 4 --num-workers 16
+effv2_s_res448-fold0 python -u train_classifier.py --run-name effv2_s_res448 --model tf_efficientnetv2_s.in21k_ft_in1k --lr 2e-4 --img-size 448 --fold 0 --num-workers 16
+effv2_s_res448-fold1 python -u train_classifier.py --run-name effv2_s_res448 --model tf_efficientnetv2_s.in21k_ft_in1k --lr 2e-4 --img-size 448 --fold 1 --num-workers 16
+effv2_s_res448-fold2 python -u train_classifier.py --run-name effv2_s_res448 --model tf_efficientnetv2_s.in21k_ft_in1k --lr 2e-4 --img-size 448 --fold 2 --num-workers 16
+effv2_s_res448-fold3 python -u train_classifier.py --run-name effv2_s_res448 --model tf_efficientnetv2_s.in21k_ft_in1k --lr 2e-4 --img-size 448 --fold 3 --num-workers 16
+effv2_s_res448-fold4 python -u train_classifier.py --run-name effv2_s_res448 --model tf_efficientnetv2_s.in21k_ft_in1k --lr 2e-4 --img-size 448 --fold 4 --num-workers 16

@@ -30,13 +30,16 @@ hwx/
 ├── isic/                          # shared code
 │   ├── data.py                    # label loading, lesion-grouped CV folds, Dataset, transforms, multi-crop
 │   ├── engine.py                  # train / predict loops (bf16 autocast), I/O helpers
-│   └── metrics.py                 # balanced accuracy, AUC, per-class recall, melanoma sens/spec
+│   ├── metrics.py                 # balanced accuracy, AUC, per-class recall, melanoma sens/spec
+│   └── models.py                  # timm backbone builder (input-size-aware for transformers)
 ├── 01_baseline_resnet50.ipynb     # our baseline: ImageNet ResNet-50, plain cross-entropy
 ├── literature_baseline_gessert2018.py   # literature baseline: Gessert et al. 2018 single-model recipe
 ├── train_classifier.py            # notebook-01 recipe as a CLI (one fold per run, one factor changed per flag)
 ├── compare_runs.py                # multi-fold comparison on the official test set + paired per-fold differences
 ├── posthoc_logit_adjustment.py    # re-weights a finished run's saved predictions by class prior (tau tuned on CV)
 ├── evaluate_tta.py                # re-evaluates a run's checkpoints with test-time augmentation (4 or 20 views)
+├── ensemble_runs.py               # fold-wise probability average of several runs, saved as a new run
+├── report/                        # results page: data collector, HTML template, build script
 ├── slurm/                         # Perlmutter batch jobs (logs in slurm/logs/)
 └── results/                       # (created; git-ignored) checkpoints, metrics.json, prediction CSVs
 ```
@@ -242,6 +245,47 @@ It beats the Gessert DenseNet-121 reproduction by +0.064 test balanced accuracy 
 Its 5-fold ensemble (0.870) exceeds the paper's 54-model ensemble (0.856).
 Resolution is the factor that improves the features: AUC rises, unlike with loss weighting. Longer training and
 stronger augmentation did not help on the CV folds.
+
+## 6. Round 3: stronger backbones and a cross-backbone ensemble
+
+Each backbone replaced ResNet-50 in the optimised recipe: 448 px, 30 epochs, plain CE, 20-view TTA, then logit adjustment.
+Learning rates came from a fold-0 pilot at 224 px (`slurm/jobs/round3_pilot.txt`), choosing between 2e-4 and 5e-5
+by CV balanced accuracy after adjustment.
+
+```bash
+salloc -A m4012 -C gpu -q interactive -N 1 -G 4 -t 01:00:00 srun -n 1 -c 128 -G 4 bash slurm/run_jobs_node.sh slurm/jobs/round3_pilot.txt
+salloc -A m4012 -C gpu -q interactive -N 1 -G 4 -t 04:00:00 srun -n 1 -c 128 -G 4 \
+    bash slurm/run_jobs_node.sh slurm/jobs/round3_backbones.txt slurm/jobs/round3_tta.txt
+```
+
+| Backbone (all + TTA-20 + LA) | Params | lr (pilot) | CV bal. acc. | Test bal. acc. | Test AUC | Test MEL sens. | 5-fold ens. |
+|---|---|---|---|---|---|---|---|
+| ConvNeXt-S (IN-22k) | 49.5M | 2e-4 | **0.843 ± 0.020** | 0.817 ± 0.017 | 0.977 | 0.747 | 0.862 |
+| EfficientNetV2-S (IN-21k) | 20.2M | 2e-4 | 0.837 ± 0.015 | 0.832 ± 0.012 | 0.978 | 0.744 | 0.863 |
+| DINOv2 ViT-B/14 (self-sup.) | 86.3M | 5e-5 | 0.832 ± 0.019 | 0.825 ± 0.026 | 0.974 | 0.781 | 0.871 |
+| ResNet-50 (round-2 optimised) | 23.5M | 2e-4 | 0.831 ± 0.016 | **0.835 ± 0.014** | 0.973 | 0.759 | 0.870 |
+| ViT-B/16 (IN-21k) | 86.3M | 5e-5 | 0.826 ± 0.023 | 0.802 ± 0.017 | 0.974 | 0.745 | 0.848 |
+
+**No single backbone beats ResNet-50 on test.** Paired test differences against it range from −0.002 to −0.032,
+although test AUC is slightly higher for all of them. The CV ranking does not hold on test: the CV differences sit
+within fold noise, and the test set's class mix and image sources differ from HAM10000's.
+
+**Averaging across backbones does help, and it is the clear choice on CV.** Per fold, averaging the five backbones'
+adjusted probabilities scores **0.873 ± 0.014 on CV** (best single model: 0.843) and 0.877 ± 0.014 on test. Averaging
+**all 25 models** (5 backbones × 5 folds) gives **0.892 test balanced accuracy**, 0.987 AUC and 0.825 melanoma
+sensitivity at 0.937 specificity. That is above Gessert et al.'s 54-model ensemble (0.856) and the ISIC 2018 winner
+(0.885, which used external data). Dropping ViT does not help (CV 0.871).
+
+```bash
+python ensemble_runs.py --name ens5_res448_tta20_la resnet50_ce_res448_tta20_la convnext_s_res448_tta20_la \
+    effv2_s_res448_tta20_la dinov2_b14_res448_tta20_la vit_b16_res448_tta20_la
+python compare_runs.py ens5_res448_tta20_la resnet50_ce_res448_tta20_la
+```
+
+## Report page
+
+`report/` rebuilds the results page from `results/`: `python report/build_report.py` writes
+`report/build/skin_lesion_study.html`, which is published as the project's report artifact.
 
 ## Other reference points
 

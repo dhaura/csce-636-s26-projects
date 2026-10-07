@@ -20,7 +20,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import timm
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -29,6 +28,7 @@ from isic.data import (CLASSES, ISICDataset, add_cv_folds, baseline_transforms, 
                        load_split)
 from isic.engine import get_device, predict, save_json, save_predictions, seed_everything, train_one_epoch
 from isic.metrics import compute_metrics, format_metrics
+from isic.models import build_model
 
 HWX_DIR = Path(__file__).resolve().parent
 
@@ -55,6 +55,7 @@ def parse_args():
     p.add_argument("--warmup-epochs", type=int, default=1)
     p.add_argument("--num-workers", type=int, default=min(16, os.cpu_count() or 1))
     p.add_argument("--no-amp", action="store_true")
+    p.add_argument("--grad-checkpointing", action="store_true", help="trade compute for memory (large transformers)")
     p.add_argument("--smoke-test", action="store_true", help="tiny subset, 2 epochs")
     args = p.parse_args()
     if args.resize is None:
@@ -92,7 +93,8 @@ def main():
                     for k, d in splits.items() if k != "train"}
 
     # ---------------- model / loss / optimiser ----------------
-    model = timm.create_model(args.model, pretrained=True, num_classes=len(CLASSES))
+    model = build_model(args.model, len(CLASSES), args.img_size, pretrained=True,
+                        grad_checkpointing=args.grad_checkpointing)
     model = model.to(device).to(memory_format=torch.channels_last)
     n_params = sum(p.numel() for p in model.parameters())
 

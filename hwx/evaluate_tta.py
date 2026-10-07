@@ -15,13 +15,13 @@ import json
 import os
 from pathlib import Path
 
-import timm
 import torch
 from torch.utils.data import DataLoader
 
 from isic.data import CLASSES, ISICDataset, TTAViews, add_cv_folds, load_split
 from isic.engine import get_device, predict, save_json, save_predictions
 from isic.metrics import compute_metrics, format_metrics
+from isic.models import build_model
 
 HWX_DIR = Path(__file__).resolve().parent
 
@@ -52,7 +52,7 @@ def main():
         splits = {"cv_val": train_all[train_all.fold == k].reset_index(drop=True),
                   "official_val": load_split("val"), "official_test": load_split("test")}
 
-        model = timm.create_model(cfg["model"], pretrained=False, num_classes=len(CLASSES))
+        model = build_model(cfg["model"], len(CLASSES), cfg["img_size"], pretrained=False)
         model.load_state_dict(torch.load(src / f"fold{k}" / "best.pt", map_location="cpu"))
         model = model.to(device).to(memory_format=torch.channels_last)
 
