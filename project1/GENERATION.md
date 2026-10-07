@@ -55,6 +55,10 @@ This saves useful progress for the full target. Subsequent normal submissions co
 
 The full schedule is roughly a billion LP solves (fewer, since solving stops at the first infinite height). Completion within one job is not guaranteed. Progress logs report actual rows/second and an estimated remaining time. Benchmark on the allocated node before extrapolating runtime.
 
+### CPU-node variant
+
+`run_data_gen_cpu.sh` runs the same generation on a CPU node: 128 workers on 128 physical cores, 10-hour limit. Submit it with your CPU account (`sbatch --account=m4012 run_data_gen_cpu.sh`). It writes to `$SCRATCH/csce636-project1-generation-v2-cpu`, so it can run alongside the GPU-node job. Both produce identical rows and copy the same files into `project1/data/`. Once one finishes, cancel the other.
+
 ## Checkpoint and resume behavior
 
 Only the parent process writes files. It keeps at most twice the worker count of outstanding matrix tasks. Checkpoints are atomic single pickle files containing **both** feature and label lists, complete matrix groups, and contiguous matrix IDs. They are flushed after approximately **50,000 rows**, after **five minutes** of accumulated results, and on a handled stop signal. A group is never split across checkpoints.

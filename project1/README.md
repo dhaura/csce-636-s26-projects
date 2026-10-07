@@ -10,7 +10,7 @@ Every prediction must be finite and ≥ 1.
 
 ## The model
 
-`project1.ipynb` contains the complete pipeline. It is a single TensorFlow/Keras multilayer perceptron that handles all 9 settings.
+`project1_v1.ipynb` contains the complete pipeline. It is a single TensorFlow/Keras multilayer perceptron that handles all 9 settings.
 
 | Stage | What it does |
 |---|---|
@@ -27,10 +27,13 @@ There is no other pre- or post-processing, and no linear-algebra features such a
 - **Target and loss:** `log2(m-height)` with mean squared error, which is exactly the grading cost.
 - **Equal weight per setting:** each row is weighted by the inverse of its setting's frequency, so all 9 `(n, k, m)` settings count equally, as in the grade.
 - **Split:** 60 / 20 / 20 train / validation / test, assigned per distinct matrix with a seeded hash of `(n, k, P)`. A matrix that appears under several `m` values never ends up in two splits.
-- **Optimiser:** Adam (lr 1e-3), batch size 4096, up to 50 epochs (`MHEIGHT_MAX_EPOCHS`).
-  - `ReduceLROnPlateau` halves the learning rate after 3 epochs without improvement.
-  - Early stopping waits 8 epochs.
-  - The checkpoint with the best validation loss is kept.
+- **Two training phases:**
+  1. **Pre-training** on the extended dataset (provided + generated rows): Adam with learning rate 1e-3, validated on all extended validation rows. The best weights are saved as `pretrained_model.keras`.
+  2. **Fine-tuning** on the provided rows only: a new Adam optimiser with learning rate 3e-4, validated on the provided-data validation rows. The best weights are saved as `best_model.keras`, the final model.
+
+  Pre-training learns the general structure from more matrices. Fine-tuning adapts the model to the instructor's distribution, which the test set follows.
+- **In both phases:** batch size 4096; `ReduceLROnPlateau` halves the learning rate after 3 epochs without improvement; early stopping waits 8 epochs; the checkpoint with the best validation loss is kept.
+- **Evaluation:** costs are reported on the provided-data validation and test rows, for both the pre-trained and the fine-tuned model.
 - **Reproducibility:** seed 636 and TensorFlow op determinism.
 - **Invalid labels:** rows with non-finite labels or labels below 1 are reported and excluded.
 
@@ -51,7 +54,7 @@ The new matrices are drawn to resemble the provided ones:
 
 [GENERATION.md](GENERATION.md) covers the details, checkpointing and resume.
 
-The extended pickles are written with NumPy 2. The notebook's `load_pickle` also reads them under NumPy 1.x.
+The extended pickles are written with NumPy 2. The notebook's `load_pickle` also reads them under NumPy 1.x. The notebook always loads the extended files and uses their first `N_PROVIDED` rows (the provided data) for fine-tuning and evaluation.
 
 ## Running
 
@@ -59,20 +62,25 @@ The extended pickles are written with NumPy 2. The notebook's `load_pickle` also
 
 ```bash
 cd project1
-# Train/evaluate on the provided data -> artifacts/dnn_v1_keras3/
+# Pre-train + fine-tune with project1_v1.ipynb -> artifacts/dnn_v1_finetune/
 sbatch --account=m4012_g run_notebook.sh
-# Train/evaluate on the extended data -> artifacts/dnn_v2/
-MHEIGHT_DATASET=extended MHEIGHT_RUN=dnn_v2 MHEIGHT_MAX_EPOCHS=150 sbatch --account=m4012_g run_notebook.sh
-# Regenerate the extended dataset (about 9 hours on 64 cores; resubmit the same command to resume)
+# The saved dnn_v1_finetune model used longer training:
+MHEIGHT_PRETRAIN_EPOCHS=100 MHEIGHT_FINETUNE_EPOCHS=150 sbatch --account=m4012_g run_notebook.sh
+# Regenerate the extended dataset on a CPU node (about 4.5 hours; resubmit the same command to resume)
+sbatch --account=m4012 run_data_gen_cpu.sh
+# ...or on a GPU node (about 9 hours on 64 cores)
 sbatch --account=m4012_g run_data_gen.sh
 ```
 
-`run_notebook.sh` runs the notebook headlessly on one shared A100 using the project environment.
+`run_notebook.sh` runs the notebook headlessly on one shared A100 using the project environment. `NOTEBOOK=` selects another notebook (default `project1_v1.ipynb`).
 
 Each run directory `artifacts/<run>/` collects:
-- `project1_executed.ipynb`, the notebook with all its outputs;
+- `project1_v1_executed.ipynb`, the notebook with all its outputs;
 - the Slurm logs;
-- `best_model.keras`, `history.json`, `costs.json` and `split_indices.npz`.
+- `pretrained_model.keras` and `best_model.keras` (the fine-tuned, final model);
+- `pretrain_history.json`, `finetune_history.json`, `costs.json`, `split_indices.npz` and `local_test_predictions.pkl`.
+
+Runs made with earlier notebook versions (`dnn_v1`, `dnn_v1_keras3`, `dnn_v1_extended`) contain `project1_executed.ipynb` and a single `history.json` instead.
 
 The source notebook is not modified.
 
@@ -91,9 +99,10 @@ Notebook settings (environment variables):
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MHEIGHT_DATASET` | `original` | `original` or `extended` training data |
-| `MHEIGHT_RUN` | `dnn_v1_keras3` | output directory under `artifacts/` |
-| `MHEIGHT_MAX_EPOCHS` | `50` | epoch budget (early stopping may end sooner) |
+| `MHEIGHT_RUN` | `dnn_v1_finetune` | output directory under `artifacts/` |
+| `MHEIGHT_PRETRAIN_EPOCHS` | `50` | pre-training epoch budget (early stopping may end sooner) |
+| `MHEIGHT_FINETUNE_EPOCHS` | `50` | fine-tuning epoch budget (early stopping may end sooner) |
+| `MHEIGHT_FINETUNE_LR` | `3e-4` | fine-tuning learning rate |
 
 Run the notebook from the `project1/` directory so that the `data/` and `artifacts/` paths resolve.
 
@@ -105,8 +114,8 @@ The first cell installs `numpy>=2,<3` and `tensorflow`, and only does so on Cola
 
 | Path | Purpose |
 |---|---|
-| `project1.ipynb` | Data loading, model, training, evaluation, inference helpers |
-| `generate_data.py`, `run_data_gen.sh`, `GENERATION.md` | LP-based generation of extended training data |
-| `run_notebook.sh` | Slurm script that executes the notebook on a GPU |
-| `TRAINING_REVIEW.md` | Review of the first (`dnn_v1`) training run |
+| `project1_v1.ipynb` | Data loading, model, pre-training and fine-tuning, evaluation, inference helpers |
+| `generate_data.py`, `GENERATION.md` | LP-based generation of extended training data |
+| `run_data_gen_cpu.sh`, `run_data_gen.sh` | Slurm scripts for data generation on a CPU node or a GPU node |
+| `run_notebook.sh` | Slurm script that executes a notebook on a GPU |
 | `artifacts/` | Trained models, logs and executed notebooks (not tracked by Git) |
