@@ -1,0 +1,11 @@
+# Round 2 test-time augmentation on every run's saved checkpoints (no retraining). Longest first.
+resnet50_ce_res448-tta20 python -u evaluate_tta.py resnet50_ce_res448 --crops 5 --num-workers 16
+resnet50_ce_res448-tta4 python -u evaluate_tta.py resnet50_ce_res448 --crops 1 --num-workers 16
+resnet50_ce_res384-tta20 python -u evaluate_tta.py resnet50_ce_res384 --crops 5 --num-workers 16
+resnet50_ce_res384-tta4 python -u evaluate_tta.py resnet50_ce_res384 --crops 1 --num-workers 16
+resnet50_ce_ep60-tta20 python -u evaluate_tta.py resnet50_ce_ep60 --crops 5 --num-workers 16
+resnet50_ce_ep60-tta4 python -u evaluate_tta.py resnet50_ce_ep60 --crops 1 --num-workers 16
+resnet50_ce_trivial-tta20 python -u evaluate_tta.py resnet50_ce_trivial --crops 5 --num-workers 16
+resnet50_ce_trivial-tta4 python -u evaluate_tta.py resnet50_ce_trivial --crops 1 --num-workers 16
+resnet50_ce-tta20 python -u evaluate_tta.py resnet50_ce --crops 5 --num-workers 16
+resnet50_ce-tta4 python -u evaluate_tta.py resnet50_ce --crops 1 --num-workers 16

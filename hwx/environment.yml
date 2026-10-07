@@ -1,0 +1,10 @@
+# Conda env for the ISIC 2018 skin-lesion project.
+# Created as a prefix env inside hwx/ by setup_env.sh (hwx/.conda-env).
+name: isic-hwx
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - -r requirements.txt
