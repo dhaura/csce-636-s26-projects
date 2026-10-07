@@ -10,13 +10,14 @@ Every prediction must be finite and ≥ 1.
 
 ## The model
 
-`project1_v1.ipynb` contains the complete pipeline. It is a single TensorFlow/Keras multilayer perceptron that handles all 9 settings.
+The submission model is **V2**, in `project1_v2.ipynb`, trained into `artifacts/dnn_v2_finetune/`. It is a single TensorFlow/Keras residual multilayer perceptron that handles all 9 settings. `project1_v1.ipynb` is the earlier version: the same pipeline with a small MLP.
 
 | Stage | What it does |
 |---|---|
 | Inputs | `matrix`: `P` placed in the upper-left corner of a zero-padded `6 × 5` array. `parameters`: `[n, k, m]`. |
 | Scaling (inside the model) | `Rescaling(1/100)` on the matrix, `Rescaling(1/10)` on the parameters. These are fixed layers that are saved with the model. |
-| Body | Flatten + concatenate (33 values) → Dense 256 → Dense 128 → Dense 64, all ReLU (about 50k parameters) |
+| Body (V2) | Flatten + concatenate (33 values) → Dense 512 → 4 residual blocks `x + Dense(512)(Dense(1024, GELU)(LayerNorm(x)))` → LayerNorm → ReLU (about 4.2M parameters) |
+| Body (V1) | Flatten + concatenate → Dense 256 → Dense 128 → Dense 64, all ReLU (about 50k parameters) |
 | Output | Dense 1 with Softplus, then `ReLU(max_value=100)`. This is `z = log2(ŷ)`, so it lies in `[0, 100]`. |
 | Post-processing | `ŷ = 2^z`, which is always finite and ≥ 1 |
 
@@ -62,9 +63,9 @@ The extended pickles are written with NumPy 2. The notebook's `load_pickle` also
 
 ```bash
 cd project1
-# Pre-train + fine-tune with project1_v1.ipynb -> artifacts/dnn_v1_finetune/
-sbatch --account=m4012_g run_notebook.sh
-# The saved dnn_v1_finetune model used longer training:
+# V2 (submission model): pre-train + fine-tune -> artifacts/dnn_v2_finetune/ (about 30 minutes)
+NOTEBOOK=project1_v2.ipynb MHEIGHT_RUN=dnn_v2_finetune sbatch --account=m4012_g --time=03:00:00 run_notebook.sh
+# V1 -> artifacts/dnn_v1_finetune/ (the saved model used 100 + 150 epochs)
 MHEIGHT_PRETRAIN_EPOCHS=100 MHEIGHT_FINETUNE_EPOCHS=150 sbatch --account=m4012_g run_notebook.sh
 # Regenerate the extended dataset on a CPU node (about 4.5 hours; resubmit the same command to resume)
 sbatch --account=m4012 run_data_gen_cpu.sh
@@ -108,13 +109,26 @@ Run the notebook from the `project1/` directory so that the `data/` and `artifac
 
 ### On Google Colab
 
-The first cell installs `numpy>=2,<3` and `tensorflow`, and only does so on Colab. Upload `data/` and the chosen `artifacts/<run>/best_model.keras` alongside the notebook.
+The first cell runs only on Colab. It installs exactly the versions the model was trained with: `tensorflow==2.21.0` and `keras==3.15.1` (with NumPy 2). These have wheels for Colab's Python 3.12. A fresh Python 3.12 environment with only these packages reproduced the project environment's predictions byte for byte. For training on Colab, also upload `data/`.
+
+## Predicting for a test file (the final cell)
+
+The last cell of `project1_v2.ipynb` is the one the graders run. It is self-contained: in a fresh session, run the first cell (on Colab) and then the final cell. No training cells or training data are needed.
+
+1. Put the submitted model `best_model.keras` next to the notebook. When run from `project1/`, the cell also finds it at `artifacts/dnn_v2_finetune/best_model.keras`.
+2. Set `TEST_INPUT_PATH` (default `CSCE-636-Project-1-Test-n_k_m_P`) to a pickled list of `[n, k, m, P]` samples.
+3. Run the cell. It writes `OUTPUT_PATH` (default `CSCE-636-Project-1-Test-mHeights`): a pickled list of Python floats, one per input sample in input order. This is the format of `CSCE-636-Project-1-Train-mHeights`. Every value is finite and ≥ 1.
+
+Inference runs on the CPU in fixed batches of 1024, so repeated runs give identical files. This was tested on the full provided training file (3,833,203 rows, about 6 minutes on a login node): two runs were byte-identical and matched the notebook's evaluation exactly.
+
+For the post-deadline sample-test submission, generate `CSCE-636-Project-1-Test-mHeights` with this cell **on Colab**, the environment the graders are likely to use. Different CPU types can change the last bits of floating-point results.
 
 ## Files
 
 | Path | Purpose |
 |---|---|
 | `project1_v1.ipynb` | Data loading, model, pre-training and fine-tuning, evaluation, inference helpers |
+| `project1_v2.ipynb` | **Submission notebook**: V1's pipeline with a larger residual MLP (about 4.2M parameters), plus the final prediction cell; trains into `artifacts/dnn_v2_finetune` |
 | `generate_data.py`, `GENERATION.md` | LP-based generation of extended training data |
 | `run_data_gen_cpu.sh`, `run_data_gen.sh` | Slurm scripts for data generation on a CPU node or a GPU node |
 | `run_notebook.sh` | Slurm script that executes a notebook on a GPU |
