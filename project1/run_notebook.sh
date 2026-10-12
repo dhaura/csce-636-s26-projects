@@ -17,14 +17,16 @@
 # history, costs and split indices. The source notebook itself is not modified.
 #
 # Submit with, e.g.:
-#   sbatch --account=m4012_g run_notebook.sh                                   # project1_v1.ipynb -> dnn_v1_finetune
-#   MHEIGHT_PRETRAIN_EPOCHS=100 MHEIGHT_FINETUNE_EPOCHS=150 sbatch --account=m4012_g run_notebook.sh
+#   MHEIGHT_RUN=dnn_v1_finetune sbatch --account=m4012_g run_notebook.sh       # project1_v1.ipynb -> dnn_v1_finetune
+#   MHEIGHT_RUN=dnn_v1_long MHEIGHT_PRETRAIN_EPOCHS=100 MHEIGHT_FINETUNE_EPOCHS=150 sbatch --account=m4012_g run_notebook.sh
 #   NOTEBOOK=other.ipynb MHEIGHT_RUN=other_run sbatch --account=m4012_g run_notebook.sh
 set -euo pipefail
 PROJECT_DIR="${PROJECT_DIR:-/pscratch/sd/d/dhaura/repos/csce-636-s26-projects/project1}"
 NOTEBOOK="${NOTEBOOK:-project1_v1.ipynb}"
 export MHEIGHT_DATASET="${MHEIGHT_DATASET:-extended}"
-export MHEIGHT_RUN="${MHEIGHT_RUN:-dnn_v1_finetune}"
+# Require an explicit run name, so different runs can never write into the same folder.
+: "${MHEIGHT_RUN:?Set MHEIGHT_RUN to the output folder name under artifacts/}"
+export MHEIGHT_RUN
 cd "$PROJECT_DIR"
 
 # TensorFlow 2.21 is built for CUDA 12: drop the default CUDA 13 module and use the
@@ -47,5 +49,5 @@ echo "Notebook: $NOTEBOOK  Dataset: $MHEIGHT_DATASET  Run: $MHEIGHT_RUN"
 jupyter nbconvert --to notebook --execute "$NOTEBOOK" \
     --ExecutePreprocessor.kernel_name=csce636-p1 \
     --ExecutePreprocessor.timeout=-1 \
-    --output-dir "$RUN_DIR" --output "${NOTEBOOK%.ipynb}_executed.ipynb"
-echo "Executed notebook: $RUN_DIR/${NOTEBOOK%.ipynb}_executed.ipynb"
+    --output-dir "$RUN_DIR" --output "${NOTEBOOK%.ipynb}_executed${MHEIGHT_SETTINGS:+_${MHEIGHT_SETTINGS//,/_}}.ipynb"
+echo "Executed notebook: $RUN_DIR/${NOTEBOOK%.ipynb}_executed${MHEIGHT_SETTINGS:+_${MHEIGHT_SETTINGS//,/_}}.ipynb"
