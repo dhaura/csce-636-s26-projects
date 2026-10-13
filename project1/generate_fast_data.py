@@ -99,7 +99,7 @@ def verify(scale_counts, seed, count):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--input-dir", type=Path, default=Path(__file__).resolve().parent / "data")
-    parser.add_argument("--output", type=Path, default=Path(__file__).resolve().parent / "data" / "CSCE-636-Project-1-Train-Fast.npz")
+    parser.add_argument("--output", type=Path, default=Path(__file__).resolve().parent / "data" / "CSCE-636-Project-1-Train-RandomExact.npz")
     parser.add_argument("--matrices-per-k", type=int, default=4_000_000)
     parser.add_argument("--chunk", type=int, default=10_000, help="Matrices per task")
     parser.add_argument("--workers", type=int, default=1)
