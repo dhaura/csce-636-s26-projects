@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 """Slide-ready figures for the presentation, regenerated from results/ (and one checkpoint for Grad-CAM).
 
-    python make_figures.py                 # all figures -> figures/*.png (+ .pdf for charts)
-    python make_figures.py --only fig03 fig08
-    python make_figures.py --no-gradcam    # skip the GPU figure
+    python scripts/make_figures.py                 # all figures -> figures/*.png (+ .pdf for charts)
+    python scripts/make_figures.py --only fig03 fig08
+    python scripts/make_figures.py --no-gradcam    # skip the GPU figure
 
 Every number comes from saved runs; the "final model" is the pre-registered round-4 ensemble (dl_final8_calib_tau).
 """
+import sys
 import argparse
 import json
 from pathlib import Path
@@ -18,10 +19,11 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from PIL import Image  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic import analysis as A  # noqa: E402
 from isic.data import CLASS_NAMES, CLASSES, load_split  # noqa: E402
 
-HWX = Path(__file__).resolve().parent
+HWX = Path(__file__).resolve().parents[1]
 OUT = HWX / "figures"
 
 # Palette (validated categorical slots, text in ink colours, never in series colours)

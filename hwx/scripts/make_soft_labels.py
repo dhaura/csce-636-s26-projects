@@ -8,19 +8,21 @@ predictions), averaged, and renormalised. No logit adjustment: the targets keep 
 Caveat: the soft label of an image in fold j comes from models trained on the other folds, which
 include any student's own CV fold k, so a distilled student's CV score is mildly optimistic.
 
-    python make_soft_labels.py --members resnet50_ce_res448_tta20 convnext_s_res448_tta20 effv2_s_res448_tta20 \
+    python scripts/make_soft_labels.py --members resnet50_ce_res448_tta20 convnext_s_res448_tta20 effv2_s_res448_tta20 \
         dinov2_b14_res448_tta20 vit_b16_res448_tta20 --out results/soft_labels/bb5_calib_oof.csv
 """
+import sys
 import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic.data import CLASSES
 from isic.decision import EPS, balanced_accuracy, fit_temperature, log_softmax
 
-HWX_DIR = Path(__file__).resolve().parent
+HWX_DIR = Path(__file__).resolve().parents[1]
 
 
 def main():

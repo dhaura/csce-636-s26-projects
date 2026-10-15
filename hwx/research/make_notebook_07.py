@@ -43,9 +43,9 @@ def run(cmd):
     subprocess.run(cmd, shell=True, check=True, cwd=HWX_DIR)
 
 if RUN_TRAINING:
-    run("python train_classifier.py --run-name resnet50_cc_coloraug_res448 --img-size 448 --color-constancy --augment color --fold 0")
-    run("python evaluate_tta.py resnet50_cc_coloraug_res448 --crops 5 --folds 0")
-    run("python posthoc_logit_adjustment.py resnet50_cc_coloraug_res448_tta20")
+    run("python scripts/train_classifier.py --run-name resnet50_cc_coloraug_res448 --img-size 448 --color-constancy --augment color --fold 0")
+    run("python scripts/evaluate_tta.py resnet50_cc_coloraug_res448 --crops 5 --folds 0")
+    run("python scripts/posthoc_logit_adjustment.py resnet50_cc_coloraug_res448_tta20")
 '''),
 ("markdown", "## 1. What Shades of Grey does to the images, and how different train and test colours are"),
 ("code", r'''

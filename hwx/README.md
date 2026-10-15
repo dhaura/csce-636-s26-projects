@@ -27,32 +27,35 @@ hwx/
 ├── data/
 │   ├── download_isic2018.py       # downloads + verifies the dataset into data/isic2018/
 │   └── isic2018/                  # (created; git-ignored, ~3.1 GB)
-├── isic/                          # shared code
-│   ├── data.py                    # label loading, lesion-grouped CV folds, Dataset, transforms, multi-crop
+├── isic/                          # shared library, imported by every script and notebook
+│   ├── data.py                    # labels, lesion-grouped CV folds, Dataset, transforms, multi-crop, colour constancy
 │   ├── engine.py                  # train / predict loops (bf16 autocast), I/O helpers
 │   ├── metrics.py                 # balanced accuracy, AUC, per-class recall, melanoma sens/spec
 │   ├── models.py                  # timm backbone builder (input-size-aware for transformers)
 │   ├── decision.py                # temperature, tau, per-class bias, stacker (balanced-accuracy objective)
 │   └── analysis.py                # loads finished runs: per-fold tables, paired diffs, ensembles, plots
-├── 01_baseline_resnet50.ipynb     # our baseline: ImageNet ResNet-50, plain cross-entropy
-├── 02_literature_baseline_gessert2018.ipynb  # version 2: Gessert et al. reproduction (results + optional 1-fold rerun)
-├── 03_imbalance_handling.ipynb    # version 3: weighted CE vs post-hoc logit adjustment
-├── 04_optimised_resnet50.ipynb    # version 4: round 2 (resolution, TTA, epochs, augmentation) -> optimised ResNet-50
-├── 05_backbones_and_ensemble.ipynb # version 5: round 3 (stronger backbones, LR pilot, cross-backbone ensemble)
-├── literature_baseline_gessert2018.py   # literature baseline: Gessert et al. 2018 single-model recipe
-├── train_classifier.py            # notebook-01 recipe as a CLI (one fold per run, one factor changed per flag)
-├── compare_runs.py                # multi-fold comparison on the official test set + paired per-fold differences
-├── posthoc_logit_adjustment.py    # re-weights a finished run's saved predictions by class prior (tau tuned on CV)
-├── evaluate_tta.py                # re-evaluates a run's checkpoints with test-time augmentation (4 or 20 views)
-├── ensemble_runs.py               # fold-wise probability average of several runs, saved as a new run
-├── make_figures.py                # slide figures -> figures/ (fig01-fig09)
-├── decision_layer.py              # OOF-fitted ensemble decision layers, nested-CV comparison, --save as a run
-├── make_soft_labels.py            # out-of-fold ensemble soft labels for distillation
-├── 06_contributions_round4.ipynb  # version 6: decision layer, OOF distillation, FixRes, final model + bootstrap CIs
-├── 07_colour_constancy_round5.ipynb # version 7: colour constancy / colour augmentation (negative result)
-├── 08_distilled_transformers_round6.ipynb # version 8: distilled DINOv2 / ViT-B/16, 25-of-25 replication
-├── research/                      # round plans (pre-registration) and notebook generators
-├── slurm/                         # Perlmutter batch jobs (logs in slurm/logs/)
+├── scripts/                       # command-line entry points; run from hwx/ as: python scripts/<name>.py
+│   ├── train_classifier.py              # notebook-01 recipe as a CLI (one fold per run, one factor per flag)
+│   ├── literature_baseline_gessert2018.py  # literature baseline: Gessert et al. 2018 single-model recipe
+│   ├── evaluate_tta.py                  # re-evaluates checkpoints with test-time augmentation (4 or 20 views)
+│   ├── posthoc_logit_adjustment.py      # re-weights saved predictions by class prior (tau tuned on CV)
+│   ├── ensemble_runs.py                 # fold-wise probability average of several runs, saved as a new run
+│   ├── decision_layer.py                # OOF-fitted ensemble decision layers, nested-CV comparison
+│   ├── make_soft_labels.py              # out-of-fold ensemble soft labels for distillation
+│   ├── compare_runs.py                  # multi-fold comparison + paired per-fold differences
+│   └── make_figures.py                  # slide figures -> figures/ (fig01-fig09)
+├── 01_baseline_resnet50.ipynb               # version 1: ImageNet ResNet-50, plain cross-entropy (step by step)
+├── 02_literature_baseline_gessert2018.ipynb # version 2: Gessert et al. reproduction
+├── 03_imbalance_handling.ipynb              # version 3: weighted CE vs post-hoc logit adjustment
+├── 04_optimised_resnet50.ipynb              # version 4: round 2 (resolution, TTA, epochs, augmentation)
+├── 05_backbones_and_ensemble.ipynb          # version 5: round 3 (stronger backbones, LR pilot, ensemble)
+├── 06_contributions_round4.ipynb            # version 6: decision layer, OOF distillation, FixRes, bootstrap CIs
+├── 07_colour_constancy_round5.ipynb         # version 7: colour constancy / colour augmentation (negative result)
+├── 08_distilled_transformers_round6.ipynb   # version 8: distilled DINOv2 / ViT-B/16, 25-of-25 replication
+├── research/                      # round plans written before results, round analyses, notebook generators
+├── slurm/                         # Perlmutter node drivers, GPU job queue, job lists (logs in slurm/logs/)
+├── figures/                       # slide figures (PNG + PDF), made by scripts/make_figures.py
+├── report/                        # (local only, git-ignored) builds the online results page
 └── results/                       # (created; git-ignored) checkpoints, metrics.json, prediction CSVs
 ```
 
@@ -133,7 +136,7 @@ Outputs go to `results/baseline_resnet50/` (`best.pt`, `history.csv`, `metrics.j
   the questions this project studies.
 - Public code is available to check the details the paper leaves out.
 
-**Reproduced recipe** (`literature_baseline_gessert2018.py`, reference model *DenseNet-121*):
+**Reproduced recipe** (`scripts/literature_baseline_gessert2018.py`, reference model *DenseNet-121*):
 
 | | Paper | This script |
 |---|---|---|
@@ -164,9 +167,9 @@ Run:
 
 ```bash
 sbatch slurm/gessert2018_cv.sbatch                          # 5 folds as an array job
-python literature_baseline_gessert2018.py --fold 0          # or a single fold interactively
-python literature_baseline_gessert2018.py --smoke-test      # quick pipeline check
-python literature_baseline_gessert2018.py --summarize       # mean ± std over folds + fold-ensemble on official test
+python scripts/literature_baseline_gessert2018.py --fold 0          # or a single fold interactively
+python scripts/literature_baseline_gessert2018.py --smoke-test      # quick pipeline check
+python scripts/literature_baseline_gessert2018.py --summarize       # mean ± std over folds + fold-ensemble on official test
 ```
 
 Per-fold outputs go to `results/gessert2018_densenet121/fold<k>/`. `metrics.json` includes the best-checkpoint
@@ -176,12 +179,12 @@ the CV fold, since the paper notes a large gap between best and last checkpoints
 ## 3. Experiment: loss weighting on the baseline
 
 Question: how much of the Gessert recipe's behaviour comes from **inverse-frequency loss weighting** alone?
-`train_classifier.py` reproduces the notebook-01 baseline exactly; the only change is `--loss-weighting inverse`
+`scripts/train_classifier.py` reproduces the notebook-01 baseline exactly; the only change is `--loss-weighting inverse`
 (wᵢ = N/nᵢ). Both variants run on all 5 folds with the same seed, so differences are paired per fold.
 
 ```bash
 salloc -A m4012 -C gpu -q interactive -N 1 -G 4 -t 01:00:00 srun -n 1 -c 128 -G 4 bash slurm/run_loss_weighting_node.sh
-python compare_runs.py resnet50_ce resnet50_wce gessert2018_densenet121    # re-print the comparison
+python scripts/compare_runs.py resnet50_ce resnet50_wce gessert2018_densenet121    # re-print the comparison
 ```
 
 Runs: `results/resnet50_ce/` (plain CE) and `results/resnet50_wce/` (weighted CE). The comparison is saved to
@@ -203,7 +206,7 @@ non-determinism. Compare runs over folds, not single runs.
 
 ## 4. Experiment: post-hoc logit adjustment (no retraining)
 
-`posthoc_logit_adjustment.py <run>` rescales a finished run's saved probabilities. It predicts
+`scripts/posthoc_logit_adjustment.py <run>` rescales a finished run's saved probabilities. It predicts
 argmax log p(y|x) − τ·log πᵧ, with π taken from each fold's training split (Menon et al., ICLR 2021).
 One τ is chosen by mean CV balanced accuracy, never on test. The output is written as a new run, `results/<run>_la/`.
 
@@ -221,15 +224,15 @@ Adjusting the plain-CE model after training beats retraining with a weighted los
 ResNet-50 at 224 px. The cost is accuracy and macro-F1: more moles get flagged as other classes.
 
 ```bash
-python posthoc_logit_adjustment.py resnet50_ce
-python compare_runs.py resnet50_ce resnet50_ce_la resnet50_wce resnet50_wce_la gessert2018_densenet121 gessert2018_densenet121_la
+python scripts/posthoc_logit_adjustment.py resnet50_ce
+python scripts/compare_runs.py resnet50_ce resnet50_ce_la resnet50_wce resnet50_wce_la gessert2018_densenet121 gessert2018_densenet121_la
 ```
 
 ## 5. Round 2: optimising the baseline
 
 **Protocol.** Each variant changes one factor of `resnet50_ce`: 384 px, 448 px, 60 epochs, or TrivialAugment.
 Each is trained on all 5 folds with the same seed. Every run is then re-evaluated with test-time augmentation
-(`evaluate_tta.py`: 4 views = flips, or 20 views = 5 crops × flips) and logit-adjusted. The configuration is
+(`scripts/evaluate_tta.py`: 4 views = flips, or 20 views = 5 crops × flips) and logit-adjusted. The configuration is
 **selected by mean CV balanced accuracy only**. Test numbers are reported for every variant but never used for choices.
 
 ```bash
@@ -296,9 +299,9 @@ sensitivity at 0.937 specificity. That is above Gessert et al.'s 54-model ensemb
 (0.885, which used external data). Dropping ViT does not help (CV 0.871).
 
 ```bash
-python ensemble_runs.py --name ens5_res448_tta20_la resnet50_ce_res448_tta20_la convnext_s_res448_tta20_la \
+python scripts/ensemble_runs.py --name ens5_res448_tta20_la resnet50_ce_res448_tta20_la convnext_s_res448_tta20_la \
     effv2_s_res448_tta20_la dinov2_b14_res448_tta20_la vit_b16_res448_tta20_la
-python compare_runs.py ens5_res448_tta20_la resnet50_ce_res448_tta20_la
+python scripts/compare_runs.py ens5_res448_tta20_la resnet50_ce_res448_tta20_la
 ```
 
 ## 7. Round 4: our contributions (decision layer, out-of-fold distillation) and the SOTA question
@@ -310,12 +313,12 @@ Analysis is in `06_contributions_round4.ipynb`.
 winner, reached 0.885 with external data. Sun et al. 2021, on the live leaderboard, reached **0.895** with an
 ensemble trained on ISIC 2019, four other datasets and patient metadata.
 
-1. **Decision layer fitted on out-of-fold (OOF) predictions** (`decision_layer.py`, `isic/decision.py`), compared by
+1. **Decision layer fitted on out-of-fold (OOF) predictions** (`scripts/decision_layer.py`, `isic/decision.py`), compared by
    nested CV (fit on 4 folds' OOF, score the 5th). All variants land within ±0.004 on CV: per-member τ, averaged τ,
    calibrate-then-τ, per-class biases, and a logistic-regression stacker. The flexible ones overfit. The selected
    layer is `calib_tau` (temperature-calibrate members, average log-probs, one τ). **The decision layer is not the
    bottleneck.**
-2. **Out-of-fold ensemble distillation** (`make_soft_labels.py`, `train_classifier.py --soft-labels`). Students are
+2. **Out-of-fold ensemble distillation** (`scripts/make_soft_labels.py`, `scripts/train_classifier.py --soft-labels`). Students are
    trained on the calibrated OOF probabilities of the 5-backbone ensemble, with loss 0.5·CE(hard) + 0.5·CE(soft).
    The settings were fixed in advance. Student CV is optimistic, because the teacher saw the student's own fold, so
    students are judged on test against their hard-label twins:
@@ -326,7 +329,7 @@ ensemble trained on ISIC 2019, four other datasets and patient metadata.
    | ResNet-50 | 0.835 | 0.854 | +0.020 (5/5) |
    | EfficientNetV2-S | 0.832 | 0.851 | +0.018 (5/5) |
 
-3. **FixRes** (`evaluate_tta.py --img-size 512`): testing at 512 px instead of 448 px did not help. Only
+3. **FixRes** (`scripts/evaluate_tta.py --img-size 512`): testing at 512 px instead of 448 px did not help. Only
    EfficientNetV2-S was switched, by the pre-set CV rule (+0.001).
 
 **Pre-registered final model:** `calib_tau` over 5 backbones + 3 students (40 networks), saved as
@@ -336,11 +339,11 @@ the best published result (0.895) using HAM10000 alone, without metadata**, but 
 distilled students to the ensemble does not help: −0.004, CI [−0.012, +0.003].
 
 ```bash
-python decision_layer.py --members <5 raw TTA-20 runs> --tag bb5                   # compare decision layers (CPU)
-python make_soft_labels.py --members <5 raw TTA-20 runs> --out results/soft_labels/bb5_calib_oof.csv
+python scripts/decision_layer.py --members <5 raw TTA-20 runs> --tag bb5                   # compare decision layers (CPU)
+python scripts/make_soft_labels.py --members <5 raw TTA-20 runs> --out results/soft_labels/bb5_calib_oof.csv
 salloc -A m4012 -C gpu -q interactive -N 1 -G 4 -t 03:30:00 srun -n 1 -c 128 -G 4 \
     bash slurm/run_jobs_node.sh slurm/jobs/round4_train.txt slurm/jobs/round4_eval.txt
-python decision_layer.py --members <5 backbones> <3 students> --tag final8 --save calib_tau
+python scripts/decision_layer.py --members <5 backbones> <3 students> --tag final8 --save calib_tau
 ```
 
 ## 8. Round 5: colour constancy and colour augmentation (pre-registered negative result)
@@ -394,7 +397,7 @@ python research/round6_analysis.py
 
 ## Figures for the slides
 
-`python make_figures.py` regenerates every figure from `results/` into `figures/`: PNG at 200 dpi, plus PDF for charts.
+`python scripts/make_figures.py` regenerates every figure from `results/` into `figures/`: PNG at 200 dpi, plus PDF for charts.
 Grad-CAM (fig08) needs one GPU-loaded checkpoint; use `--no-gradcam` to skip it.
 
 | File | Shows | Slide |

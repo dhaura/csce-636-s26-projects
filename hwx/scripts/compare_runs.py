@@ -5,8 +5,9 @@ Each run is a directory with fold<k>/metrics.json (written by train_classifier.p
 literature_baseline_gessert2018.py). Runs are given as names under results/ or as paths.
 The first run is the reference for the paired differences (same folds, same seed).
 
-    python compare_runs.py resnet50_ce resnet50_wce gessert2018_densenet121
+    python scripts/compare_runs.py resnet50_ce resnet50_wce gessert2018_densenet121
 """
+import sys
 import argparse
 import json
 from pathlib import Path
@@ -14,10 +15,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic.data import CLASSES
 from isic.metrics import compute_metrics
 
-HWX_DIR = Path(__file__).resolve().parent
+HWX_DIR = Path(__file__).resolve().parents[1]
 METRICS = ["balanced_acc", "accuracy", "macro_f1", "macro_auc", "mel_sensitivity", "mel_specificity"]
 
 

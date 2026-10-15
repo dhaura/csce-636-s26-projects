@@ -20,7 +20,7 @@ LOGS=slurm/logs; mkdir -p "$LOGS"
 nvidia-smi -L
 
 fold() {  # fold <gpu> <k>
-    CUDA_VISIBLE_DEVICES=$1 python -u literature_baseline_gessert2018.py --fold "$2" --num-workers 16 \
+    CUDA_VISIBLE_DEVICES=$1 python -u scripts/literature_baseline_gessert2018.py --fold "$2" --num-workers 16 \
         > "$LOGS/gessert2018-fold$2.out" 2>&1
     echo "$(date +%T) fold $2 finished (exit $?)"
 }
@@ -37,5 +37,5 @@ fold 2 1 &
 fold 3 2 &
 wait
 
-python literature_baseline_gessert2018.py --summarize > "$LOGS/gessert2018-summary.out" 2>&1
+python scripts/literature_baseline_gessert2018.py --summarize > "$LOGS/gessert2018-summary.out" 2>&1
 echo "$(date +%T) all done"

@@ -23,10 +23,11 @@ normalization (timm weights) instead of mean subtraction; bf16 autocast; no
 ensemble / SVM meta-learner (single model only).
 
 Usage:
-    python literature_baseline_gessert2018.py --fold 0          # one CV fold (~30-40 min on an A100)
-    python literature_baseline_gessert2018.py --smoke-test      # 2-minute pipeline check
-    python literature_baseline_gessert2018.py --summarize       # aggregate finished folds
+    python scripts/literature_baseline_gessert2018.py --fold 0          # one CV fold (~30-40 min on an A100)
+    python scripts/literature_baseline_gessert2018.py --smoke-test      # 2-minute pipeline check
+    python scripts/literature_baseline_gessert2018.py --summarize       # aggregate finished folds
 """
+import sys
 import argparse
 import json
 import os
@@ -40,12 +41,13 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic.data import (CLASSES, ISICDataset, GridCrops, add_cv_folds, class_counts, class_weights,
                        gessert_train_transform, load_split)
 from isic.engine import get_device, predict, save_json, save_predictions, seed_everything, train_one_epoch
 from isic.metrics import compute_metrics, format_metrics
 
-HWX_DIR = Path(__file__).resolve().parent
+HWX_DIR = Path(__file__).resolve().parents[1]
 
 # Numbers reported in the paper (Table II, 5-fold CV, 36-crop evaluation).
 PAPER_REFERENCE = {

@@ -5,20 +5,22 @@ For each fold k, the members' saved probabilities (pred_<split>.csv) are average
 so the ensemble can be judged on the CV folds like any single model. compare_runs.py then
 also reports the average of all members x folds on the official test set.
 
-    python ensemble_runs.py --name ens5_res448_tta20_la resnet50_ce_res448_tta20_la convnext_s_res448_tta20_la \
+    python scripts/ensemble_runs.py --name ens5_res448_tta20_la resnet50_ce_res448_tta20_la convnext_s_res448_tta20_la \
         effv2_s_res448_tta20_la dinov2_b14_res448_tta20_la vit_b16_res448_tta20_la
 """
+import sys
 import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic.data import CLASSES
 from isic.engine import save_json, save_predictions
 from isic.metrics import compute_metrics, format_metrics
 
-HWX_DIR = Path(__file__).resolve().parent
+HWX_DIR = Path(__file__).resolve().parents[1]
 SPLITS = ["cv_val", "official_val", "official_test"]
 
 
