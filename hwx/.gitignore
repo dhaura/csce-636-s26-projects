@@ -6,4 +6,5 @@ data/zips/
 data/download.log
 results/
 slurm/logs/
-report/build/
+report/
+figures/web/
