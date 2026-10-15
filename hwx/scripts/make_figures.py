@@ -338,9 +338,126 @@ def fig08_gradcam():
     save(fig, "fig08_gradcam", pdf=False)
 
 
+# ---------------------------------------------------------------------------------------------
+# Architecture diagrams: the pretrained backbone is one grey block; what we added is highlighted.
+KIND = {"data": ("#FDFCF9", BASE), "op": ("#E8F0FB", BLUE), "backbone": ("#E9EAEC", "#9AA0A8"), "ours": ("#F3E3EA", ACCENT)}
+
+
+def _box(ax, x, y, w, h, title, sub=None, kind="op", fs=13):
+    from matplotlib.patches import FancyBboxPatch
+    fill, edge = KIND[kind]
+    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02,rounding_size=0.12", fc=fill, ec=edge, lw=2 if kind == "ours" else 1.4))
+    if sub:
+        ax.text(x + w / 2, y + h * 0.66, title, ha="center", va="center", fontsize=fs, fontweight="bold", color=INK, wrap=True)
+        ax.text(x + w / 2, y + h * 0.3, sub, ha="center", va="center", fontsize=fs - 2.5, color=INK2, linespacing=1.3)
+    else:
+        ax.text(x + w / 2, y + h / 2, title, ha="center", va="center", fontsize=fs, fontweight="bold", color=INK, linespacing=1.3)
+
+
+def _arrow(ax, x1, y1, x2, y2, label=None, color=INK2, dashed=False):
+    ax.annotate("", xy=(x2, y2), xytext=(x1, y1),
+                arrowprops=dict(arrowstyle="-|>", color=color, lw=1.8, mutation_scale=18, linestyle="--" if dashed else "-"))
+    if label:
+        ax.text((x1 + x2) / 2, (y1 + y2) / 2 + 0.18, label, ha="center", va="bottom", fontsize=11, color=INK2)
+
+
+def _canvas(w, h):
+    fig, ax = plt.subplots(figsize=(w, h))
+    ax.set_xlim(0, w); ax.set_ylim(0, h); ax.axis("off")
+    return fig, ax
+
+
+def _legend(ax, x, y):
+    from matplotlib.patches import Patch
+    items = [("backbone", "pretrained backbone (internals not shown)"), ("ours", "what we added or changed"),
+             ("op", "fixed operation"), ("data", "data")]
+    ax.legend(handles=[Patch(fc=KIND[k][0], ec=KIND[k][1], label=l) for k, l in items], loc="lower left",
+              bbox_to_anchor=(x, y), bbox_transform=ax.transData, ncol=4, fontsize=11, handlelength=1.6)
+
+
+def fig10_arch_baseline():
+    fig, ax = _canvas(16, 4.6)
+    y, h = 1.55, 1.9
+    boxes = [(0.2, 2.0, "Dermoscopy\nimage", "600 × 450 RGB", "data"),
+             (2.65, 2.3, "Resize + crop", "short side 256\n224 × 224 crop\ntrain: flips, jitter", "op"),
+             (5.4, 2.9, "ResNet-50\nbackbone", "ImageNet-1k, 23.5M params\nall layers fine-tuned", "backbone"),
+             (8.75, 2.0, "Global\navg pool", "2,048-d feature", "op"),
+             (11.2, 2.1, "New head", "Linear 2,048 → 7\n14,343 params", "ours"),
+             (13.75, 2.05, "Softmax\n→ argmax", "7 class\nprobabilities", "op")]
+    for x, w, t, s, k in boxes:
+        _box(ax, x, y, w, h, t, s, k, fs=12.5)
+    for (x1, w1, *_), (x2, *_r) in zip(boxes, boxes[1:]):
+        _arrow(ax, x1 + w1 + 0.05, y + h / 2, x2 - 0.05, y + h / 2)
+    ax.text(0.2, 4.15, "Our baseline: plain ResNet-50", fontsize=16, fontweight="bold", color=INK)
+    ax.text(0.2, 3.72, "Training: cross-entropy with the true label · AdamW 2e-4 · batch 64 · 30 epochs · one center crop at test time",
+            fontsize=11.5, color=INK2)
+    _legend(ax, 0.2, 0.15)
+    save(fig, "fig10_arch_baseline")
+
+
+def fig11_arch_ours():
+    fig, ax = _canvas(16, 9.4)
+    # training path
+    ax.text(0.2, 9.0, "Our best single model: ConvNeXt-S distilled from the out-of-fold ensemble", fontsize=16, fontweight="bold", color=INK)
+    ax.text(0.2, 8.45, "TRAINING", fontsize=12, fontweight="bold", color=ACCENT)
+    y, h = 5.15, 1.9
+    train = [(0.2, 1.75, "Training\nimage", "600 × 450", "data"),
+             (2.25, 2.25, "Crop\n448 × 448", "resize 512, random\ncrop, flips, jitter", "op"),
+             (4.8, 2.6, "ConvNeXt-S\nbackbone", "ImageNet-22k, 49.5M\nall layers fine-tuned", "backbone"),
+             (7.7, 1.95, "Pool +\nLayerNorm", "768-d feature", "op"),
+             (9.95, 1.8, "New head", "Linear 768 → 7\n→ logits z", "ours"),
+             (12.05, 3.75, "Distillation loss", "0.5 · CE(z, y) + 0.5 · CE(z, q)", "ours")]
+    for x, w, t, s, k in train:
+        _box(ax, x, y, w, h, t, s, k, fs=12.5)
+    for (x1, w1, *_), (x2, *_r) in zip(train, train[1:]):
+        _arrow(ax, x1 + w1 + 0.05, y + h / 2, x2 - 0.05, y + h / 2)
+    _box(ax, 4.8, 7.35, 6.6, 1.05, "Teacher: out-of-fold ensemble (5 backbones × 5 folds)",
+         "calibrated average from the models that never saw this image", "ours", fs=12)
+    _box(ax, 12.05, 7.45, 1.8, 0.85, "soft label q", None, "ours", fs=12)
+    _box(ax, 14.05, 7.45, 1.75, 0.85, "true label y", None, "data", fs=12)
+    _arrow(ax, 11.45, 7.88, 12.0, 7.88)
+    _arrow(ax, 12.95, 7.4, 12.95, y + h + 0.05)
+    _arrow(ax, 14.92, 7.4, 14.92, y + h + 0.05)
+    # prediction path
+    ax.text(0.2, 4.35, "PREDICTION", fontsize=12, fontweight="bold", color=BLUE)
+    y2 = 1.6
+    pred = [(0.2, 1.75, "Test image", "600 × 450", "data"),
+            (2.25, 2.25, "20 views", "5 crops × 4 flips\n448 × 448 each", "ours"),
+            (4.8, 2.6, "Trained network", "ConvNeXt-S + head\n(from training)", "backbone"),
+            (7.7, 1.95, "Average", "softmax over\nthe 20 views", "ours"),
+            (9.95, 3.6, "Logit adjustment", "log p − τ · log π_class\nτ = 0.9, chosen on CV", "ours"),
+            (13.85, 2.0, "Diagnosis", "argmax of 7", "op")]
+    for x, w, t, s, k in pred:
+        _box(ax, x, y2, w, h, t, s, k, fs=12.5)
+    for (x1, w1, *_), (x2, *_r) in zip(pred, pred[1:]):
+        _arrow(ax, x1 + w1 + 0.05, y2 + h / 2, x2 - 0.05, y2 + h / 2)
+    _legend(ax, 0.2, 0.2)
+    save(fig, "fig11_arch_ours")
+
+
+def fig12_arch_ensemble():
+    fig, ax = _canvas(16, 7.4)
+    ax.text(0.2, 7.0, "Our best overall: averaging 5 backbones × 5 folds (25 networks)", fontsize=16, fontweight="bold", color=INK)
+    members = [("ResNet-50", "τ = 1.6"), ("ConvNeXt-S", "τ = 1.4"), ("EfficientNetV2-S", "τ = 1.3"),
+               ("DINOv2 ViT-B/14", "τ = 1.5"), ("ViT-B/16", "τ = 1.6")]
+    _box(ax, 0.2, 2.75, 1.9, 1.5, "Test image", "600 × 450", "data")
+    ys = [5.55, 4.4, 3.25, 2.1, 0.95]
+    for (name, tau), yy in zip(members, ys):
+        _box(ax, 3.0, yy, 3.4, 0.95, name, "× 5 fold models, 448 px", "backbone", fs=12)
+        _box(ax, 7.0, yy, 3.6, 0.95, "20-view TTA + logit adj.", tau + ", chosen on CV", "ours", fs=12)
+        _arrow(ax, 2.15, 3.5, 2.95, yy + 0.47)
+        _arrow(ax, 6.45, yy + 0.47, 6.95, yy + 0.47)
+        _arrow(ax, 10.65, yy + 0.47, 11.15, 3.5)
+    _box(ax, 11.2, 2.75, 2.5, 1.5, "Average", "probabilities of\nall 25 networks", "ours")
+    _box(ax, 14.1, 2.75, 1.75, 1.5, "Diagnosis", "argmax of 7", "op")
+    _arrow(ax, 13.75, 3.5, 14.05, 3.5)
+    ax.text(11.2, 2.3, "Test balanced accuracy 0.892\n(95% CI 0.868–0.916)", fontsize=12, color=INK, va="top", fontweight="bold")
+    save(fig, "fig12_arch_ensemble")
+
+
 FIGS = {"fig01": fig01_classes, "fig02": fig02_imbalance, "fig03": fig03_progress, "fig04": fig04_sota,
         "fig05": fig05_distillation, "fig06": fig06_effects, "fig07": fig07_confusion, "fig08": fig08_gradcam,
-        "fig09": fig09_missed_melanomas}
+        "fig09": fig09_missed_melanomas, "fig10": fig10_arch_baseline, "fig11": fig11_arch_ours, "fig12": fig12_arch_ensemble}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

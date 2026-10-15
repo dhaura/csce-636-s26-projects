@@ -43,7 +43,7 @@ hwx/
 │   ├── decision_layer.py                # OOF-fitted ensemble decision layers, nested-CV comparison
 │   ├── make_soft_labels.py              # out-of-fold ensemble soft labels for distillation
 │   ├── compare_runs.py                  # multi-fold comparison + paired per-fold differences
-│   └── make_figures.py                  # slide figures -> figures/ (fig01-fig09)
+│   └── make_figures.py                  # slide figures and architecture diagrams -> figures/ (fig01-fig12)
 ├── 01_baseline_resnet50.ipynb               # version 1: ImageNet ResNet-50, plain cross-entropy (step by step)
 ├── 02_literature_baseline_gessert2018.ipynb # version 2: Gessert et al. reproduction
 ├── 03_imbalance_handling.ipynb              # version 3: weighted CE vs post-hoc logit adjustment
@@ -397,7 +397,7 @@ python research/round6_analysis.py
 
 ## Figures for the slides
 
-`python scripts/make_figures.py` regenerates every figure from `results/` into `figures/`: PNG at 200 dpi, plus PDF for charts.
+`python scripts/make_figures.py` regenerates every figure from `results/` into `figures/`: PNG at 200 dpi, plus PDF for charts and diagrams.
 Grad-CAM (fig08) needs one GPU-loaded checkpoint; use `--no-gradcam` to skip it.
 
 | File | Shows | Slide |
@@ -411,6 +411,9 @@ Grad-CAM (fig08) needs one GPU-loaded checkpoint; use `--no-gradcam` to skip it.
 | `fig07_confusion` | Confusion matrices, baseline vs final model | Results |
 | `fig08_gradcam` | Grad-CAM on correct cases and the two key errors | Examples / failure |
 | `fig09_missed_melanomas` | The 12 most confidently missed melanomas (30 of 171) | Failure cases |
+| `fig10_arch_baseline` | Baseline architecture: pretrained ResNet-50 block + the new 7-class head | Training |
+| `fig11_arch_ours` | Our model: distillation training path and 20-view + logit-adjusted prediction path | Training / contribution |
+| `fig12_arch_ensemble` | The 0.892 ensemble: 5 backbones × 5 folds, per-member TTA + adjustment, averaged | Results |
 
 ## Other reference points
 
