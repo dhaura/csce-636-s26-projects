@@ -52,7 +52,6 @@ hwx/
 ├── 07_colour_constancy_round5.ipynb # version 7: colour constancy / colour augmentation (negative result)
 ├── 08_distilled_transformers_round6.ipynb # version 8: distilled DINOv2 / ViT-B/16, 25-of-25 replication
 ├── research/                      # round plans (pre-registration) and notebook generators
-├── report/                        # (local only, git-ignored) builds the online results page
 ├── slurm/                         # Perlmutter batch jobs (logs in slurm/logs/)
 └── results/                       # (created; git-ignored) checkpoints, metrics.json, prediction CSVs
 ```
@@ -409,11 +408,6 @@ Grad-CAM (fig08) needs one GPU-loaded checkpoint; use `--no-gradcam` to skip it.
 | `fig07_confusion` | Confusion matrices, baseline vs final model | Results |
 | `fig08_gradcam` | Grad-CAM on correct cases and the two key errors | Examples / failure |
 | `fig09_missed_melanomas` | The 12 most confidently missed melanomas (30 of 171) | Failure cases |
-
-## Report page
-
-The online results page is built from `results/` by the local, git-ignored `report/` folder
-(`python report/build_report.py`). It is not part of the repository.
 
 ## Other reference points
 
