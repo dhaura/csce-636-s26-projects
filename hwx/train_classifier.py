@@ -24,8 +24,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from isic.data import (CLASSES, ISICDataset, add_cv_folds, baseline_transforms, class_counts, class_weights,
-                       load_split)
+from isic.data import (CLASSES, ISICDataset, SoftLabelDataset, add_cv_folds, baseline_transforms, class_counts,
+                       class_weights, load_split)
 from isic.engine import get_device, predict, save_json, save_predictions, seed_everything, train_one_epoch
 from isic.metrics import compute_metrics, format_metrics
 from isic.models import build_model
@@ -46,8 +46,9 @@ def parse_args():
     p.add_argument("--img-size", type=int, default=224)
     p.add_argument("--resize", type=int, default=None,
                    help="short-side resize before cropping; default keeps the baseline framing, round(img_size * 256/224)")
-    p.add_argument("--augment", choices=["basic", "trivial"], default="basic",
-                   help="basic: mild color jitter (baseline); trivial: TrivialAugmentWide")
+    p.add_argument("--augment", choices=["basic", "trivial", "color"], default="basic",
+                   help="basic: mild color jitter (baseline); trivial: TrivialAugmentWide; color: stronger color jitter")
+    p.add_argument("--color-constancy", action="store_true", help="Shades-of-Grey colour constancy on every image (train + eval)")
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--batch-size", type=int, default=64)
     p.add_argument("--lr", type=float, default=2e-4)
@@ -56,6 +57,10 @@ def parse_args():
     p.add_argument("--num-workers", type=int, default=min(16, os.cpu_count() or 1))
     p.add_argument("--no-amp", action="store_true")
     p.add_argument("--grad-checkpointing", action="store_true", help="trade compute for memory (large transformers)")
+    p.add_argument("--soft-labels", type=Path, default=None,
+                   help="CSV (image + one probability column per class) of teacher soft labels -> knowledge distillation")
+    p.add_argument("--kd-alpha", type=float, default=0.5, help="weight of the distillation term (1 - alpha on hard-label CE)")
+    p.add_argument("--kd-temp", type=float, default=1.0, help="distillation temperature")
     p.add_argument("--smoke-test", action="store_true", help="tiny subset, 2 epochs")
     args = p.parse_args()
     if args.resize is None:
@@ -85,9 +90,16 @@ def main():
     train_df = splits["train"]
     print(f"[{args.run_name}] fold {args.fold}: " + " | ".join(f"{k} {len(d)}" for k, d in splits.items()))
 
-    train_tf, eval_tf = baseline_transforms(args.img_size, args.resize, args.augment)
+    train_tf, eval_tf = baseline_transforms(args.img_size, args.resize, args.augment, args.color_constancy)
     loader_kw = dict(num_workers=args.num_workers, pin_memory=True, persistent_workers=args.num_workers > 0)
-    train_loader = DataLoader(ISICDataset(train_df, train_tf), batch_size=args.batch_size, shuffle=True,
+    if args.soft_labels:
+        sl = pd.read_csv(args.soft_labels)
+        soft = dict(zip(sl["image"], sl[CLASSES].to_numpy()))
+        train_ds = SoftLabelDataset(train_df, train_tf, soft)
+        print(f"knowledge distillation from {args.soft_labels} (alpha {args.kd_alpha}, T {args.kd_temp})")
+    else:
+        train_ds = ISICDataset(train_df, train_tf)
+    train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True,
                               drop_last=True, **loader_kw)
     eval_loaders = {k: DataLoader(ISICDataset(d, eval_tf), batch_size=128, shuffle=False, **loader_kw)
                     for k, d in splits.items() if k != "train"}
@@ -101,7 +113,18 @@ def main():
     w = class_weights(train_df.label, args.loss_weighting)
     print("train class counts:", dict(zip(CLASSES, class_counts(train_df.label).tolist())))
     print("class weights:", None if w is None else dict(zip(CLASSES, w.round(decimals=2).tolist())))
-    loss_fn = nn.CrossEntropyLoss(weight=None if w is None else w.to(device))
+    ce = nn.CrossEntropyLoss(weight=None if w is None else w.to(device))
+    if args.soft_labels:
+        T, a = args.kd_temp, args.kd_alpha
+
+        def loss_fn(logits, target):  # target = [hard label, teacher probs]
+            y, p_t = target[:, 0].long(), target[:, 1:]
+            if T != 1.0:
+                p_t = torch.softmax(torch.log(p_t.clamp_min(1e-7)) / T, dim=1)
+            kd = -(p_t * torch.log_softmax(logits.float() / T, dim=1)).sum(1).mean() * T * T
+            return (1 - a) * ce(logits, y) + a * kd
+    else:
+        loss_fn = ce
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     total_steps = args.epochs * len(train_loader)
@@ -135,7 +158,7 @@ def main():
         pd.DataFrame(history).to_csv(out_dir / "history.csv", index=False)
 
     # ---------------- evaluation ----------------
-    results = {"config": vars(args), "n_params": n_params, "best_epoch": best_epoch,
+    results = {"config": {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()}, "n_params": n_params, "best_epoch": best_epoch,
                "train_time_min": (time.time() - t0) / 60,
                "last_checkpoint": {"cv_val": m}, "best_checkpoint": {}}
     model.load_state_dict(torch.load(ckpt, map_location=device))

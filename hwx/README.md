@@ -32,6 +32,7 @@ hwx/
 │   ├── engine.py                  # train / predict loops (bf16 autocast), I/O helpers
 │   ├── metrics.py                 # balanced accuracy, AUC, per-class recall, melanoma sens/spec
 │   ├── models.py                  # timm backbone builder (input-size-aware for transformers)
+│   ├── decision.py                # temperature, tau, per-class bias, stacker (balanced-accuracy objective)
 │   └── analysis.py                # loads finished runs: per-fold tables, paired diffs, ensembles, plots
 ├── 01_baseline_resnet50.ipynb     # our baseline: ImageNet ResNet-50, plain cross-entropy
 ├── 02_literature_baseline_gessert2018.ipynb  # version 2: Gessert et al. reproduction (results + optional 1-fold rerun)
@@ -44,7 +45,14 @@ hwx/
 ├── posthoc_logit_adjustment.py    # re-weights a finished run's saved predictions by class prior (tau tuned on CV)
 ├── evaluate_tta.py                # re-evaluates a run's checkpoints with test-time augmentation (4 or 20 views)
 ├── ensemble_runs.py               # fold-wise probability average of several runs, saved as a new run
-├── report/                        # results page: data collector, HTML template, build script
+├── make_figures.py                # slide figures -> figures/ (fig01-fig09)
+├── decision_layer.py              # OOF-fitted ensemble decision layers, nested-CV comparison, --save as a run
+├── make_soft_labels.py            # out-of-fold ensemble soft labels for distillation
+├── 06_contributions_round4.ipynb  # version 6: decision layer, OOF distillation, FixRes, final model + bootstrap CIs
+├── 07_colour_constancy_round5.ipynb # version 7: colour constancy / colour augmentation (negative result)
+├── 08_distilled_transformers_round6.ipynb # version 8: distilled DINOv2 / ViT-B/16, 25-of-25 replication
+├── research/                      # round plans (pre-registration) and notebook generators
+├── report/                        # (local only, git-ignored) builds the online results page
 ├── slurm/                         # Perlmutter batch jobs (logs in slurm/logs/)
 └── results/                       # (created; git-ignored) checkpoints, metrics.json, prediction CSVs
 ```
@@ -294,10 +302,118 @@ python ensemble_runs.py --name ens5_res448_tta20_la resnet50_ce_res448_tta20_la 
 python compare_runs.py ens5_res448_tta20_la resnet50_ce_res448_tta20_la
 ```
 
+## 7. Round 4: our contributions (decision layer, out-of-fold distillation) and the SOTA question
+
+The plan and decision rules were written down before any round-4 result was seen: `research/round4_plan.md`.
+Analysis is in `06_contributions_round4.ipynb`.
+
+**Best published results on this test set:** Gessert et al. 2018 reached 0.856 (HAM10000). MetaOptima, the 2018
+winner, reached 0.885 with external data. Sun et al. 2021, on the live leaderboard, reached **0.895** with an
+ensemble trained on ISIC 2019, four other datasets and patient metadata.
+
+1. **Decision layer fitted on out-of-fold (OOF) predictions** (`decision_layer.py`, `isic/decision.py`), compared by
+   nested CV (fit on 4 folds' OOF, score the 5th). All variants land within ±0.004 on CV: per-member τ, averaged τ,
+   calibrate-then-τ, per-class biases, and a logistic-regression stacker. The flexible ones overfit. The selected
+   layer is `calib_tau` (temperature-calibrate members, average log-probs, one τ). **The decision layer is not the
+   bottleneck.**
+2. **Out-of-fold ensemble distillation** (`make_soft_labels.py`, `train_classifier.py --soft-labels`). Students are
+   trained on the calibrated OOF probabilities of the 5-backbone ensemble, with loss 0.5·CE(hard) + 0.5·CE(soft).
+   The settings were fixed in advance. Student CV is optimistic, because the teacher saw the student's own fold, so
+   students are judged on test against their hard-label twins:
+
+   | Single model (TTA-20 + LA, test, 5-fold mean) | Hard labels | Distilled | Paired gain |
+   |---|---|---|---|
+   | ConvNeXt-S | 0.817 | **0.864** | +0.047 (5/5), AUC +0.006, MEL sens. +0.048 |
+   | ResNet-50 | 0.835 | 0.854 | +0.020 (5/5) |
+   | EfficientNetV2-S | 0.832 | 0.851 | +0.018 (5/5) |
+
+3. **FixRes** (`evaluate_tta.py --img-size 512`): testing at 512 px instead of 448 px did not help. Only
+   EfficientNetV2-S was switched, by the pre-set CV rule (+0.001).
+
+**Pre-registered final model:** `calib_tau` over 5 backbones + 3 students (40 networks), saved as
+`results/dl_final8_calib_tau`. It scores **0.888** on test (per fold 0.883 ± 0.008, our most stable result); the
+5-backbone version scores 0.892. A stratified bootstrap puts the 95% CI at about ±0.025 (0.862–0.913). So we **match
+the best published result (0.895) using HAM10000 alone, without metadata**, but do not measurably beat it. Adding the
+distilled students to the ensemble does not help: −0.004, CI [−0.012, +0.003].
+
+```bash
+python decision_layer.py --members <5 raw TTA-20 runs> --tag bb5                   # compare decision layers (CPU)
+python make_soft_labels.py --members <5 raw TTA-20 runs> --out results/soft_labels/bb5_calib_oof.csv
+salloc -A m4012 -C gpu -q interactive -N 1 -G 4 -t 03:30:00 srun -n 1 -c 128 -G 4 \
+    bash slurm/run_jobs_node.sh slurm/jobs/round4_train.txt slurm/jobs/round4_eval.txt
+python decision_layer.py --members <5 backbones> <3 students> --tag final8 --save calib_tau
+```
+
+## 8. Round 5: colour constancy and colour augmentation (pre-registered negative result)
+
+Plan: `research/round5_plan.md`, written before the runs. Analysis: `research/round5_analysis.py` and
+`07_colour_constancy_round5.ipynb`. **Hypothesis:** the test set's acquisition shift (other clinics and devices)
+would be reduced by Shades-of-Grey colour constancy (`--color-constancy`, p = 6) and stronger colour augmentation
+(`--augment color`). Each variant changes the optimised ResNet-50 (448 px, TTA-20 + LA), runs on 5 folds, and is
+paired against it.
+
+| Variant | CV Δ (non-inferiority, margin 0.005) | Test bal. acc. | Test Δ (paired) |
+|---|---|---|---|
+| Baseline (no CC, basic aug) | – | 0.835 | – |
+| CC + strong colour aug (primary) | −0.005, fails | 0.818 | −0.016 (0/5 folds better) |
+| CC only | −0.009, fails | 0.803 | −0.032 (0/5) |
+| Strong colour aug only | −0.013, fails | 0.816 | −0.019 (0/5) |
+
+**Rejected; nothing adopted.** Colour carries diagnostic signal in dermoscopy (vascular = red, keratoses = brown), so
+normalising it away or jittering hue hurts. HAM10000 and the test set barely differ in mean colour. The optimised
+ResNet-50 also has no CV → test drop (−0.003), so the premise only held for other models.
+
+```bash
+salloc -A m4012 -C gpu -q interactive -N 1 -G 4 -t 02:15:00 srun -n 1 -c 128 -G 4 \
+    bash slurm/run_jobs_node.sh slurm/jobs/round5_train.txt slurm/jobs/round5_eval.txt
+python research/round5_analysis.py
+```
+
+## 9. Round 6: distilling the transformers (replication)
+
+Plan: `research/round6_plan.md`, written before the runs; it repeats the round-4 protocol exactly. Analysis:
+`research/round6_analysis.py` and `08_distilled_transformers_round6.ipynb`.
+
+| Architecture (TTA-20 + LA, test, 5-fold mean) | Hard labels | Distilled | Paired gain |
+|---|---|---|---|
+| ConvNeXt-S (round 4) | 0.817 | 0.864 | +0.047 (5/5) |
+| ViT-B/16 (round 6) | 0.802 | 0.844 | +0.042 (5/5) |
+| DINOv2 ViT-B/14 (round 6) | 0.825 | 0.863 | +0.038 (5/5) |
+| ResNet-50 (round 4) | 0.835 | 0.854 | +0.020 (5/5) |
+| EfficientNetV2-S (round 4) | 0.832 | 0.851 | +0.018 (5/5) |
+
+**Distillation improves single networks on all 25 of 25 fold pairs** (+0.033 on average), and AUC rises on every
+fold. The transformers gain the most. Ensembles, reported only: 5 students reach 0.885, and 5 backbones + 5 students
+reach 0.893 (CI 0.869–0.916). Both are within noise of the pre-registered final model (0.888), which stays the
+official one.
+
+```bash
+salloc -A m4012 -C gpu -q interactive -N 1 -G 4 -t 02:00:00 srun -n 1 -c 128 -G 4 \
+    bash slurm/run_jobs_node.sh slurm/jobs/round6_train.txt slurm/jobs/round6_eval.txt
+python research/round6_analysis.py
+```
+
+## Figures for the slides
+
+`python make_figures.py` regenerates every figure from `results/` into `figures/`: PNG at 200 dpi, plus PDF for charts.
+Grad-CAM (fig08) needs one GPU-loaded checkpoint; use `--no-gradcam` to skip it.
+
+| File | Shows | Slide |
+|---|---|---|
+| `fig01_classes` | One example per class with training counts | Task |
+| `fig02_imbalance` | Class imbalance and why balanced accuracy | Task |
+| `fig03_progress` | 0.724 → 0.892, with published results as lines | Results (headline) |
+| `fig04_sota` | Our models vs published results, bootstrap 95% CIs | Results / SOTA |
+| `fig05_distillation` | Hard-label vs distilled, per fold | Contribution |
+| `fig06_effects` | Paired effect of every change tried (kept vs not kept) | Lessons |
+| `fig07_confusion` | Confusion matrices, baseline vs final model | Results |
+| `fig08_gradcam` | Grad-CAM on correct cases and the two key errors | Examples / failure |
+| `fig09_missed_melanomas` | The 12 most confidently missed melanomas (30 of 171) | Failure cases |
+
 ## Report page
 
-`report/` rebuilds the results page from `results/`: `python report/build_report.py` writes
-`report/build/skin_lesion_study.html`, which is published as the project's report artifact.
+The online results page is built from `results/` by the local, git-ignored `report/` folder
+(`python report/build_report.py`). It is not part of the repository.
 
 ## Other reference points
 

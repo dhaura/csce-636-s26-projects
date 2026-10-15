@@ -1,0 +1,7 @@
+# Round 4 evaluation: 20-view TTA of the students; FixRes check (test at 512 px) of the round-3 CNN checkpoints.
+convnext_s_kd_res448-tta20 python -u evaluate_tta.py convnext_s_kd_res448 --crops 5 --num-workers 16
+effv2_s_kd_res448-tta20 python -u evaluate_tta.py effv2_s_kd_res448 --crops 5 --num-workers 16
+resnet50_kd_res448-tta20 python -u evaluate_tta.py resnet50_kd_res448 --crops 5 --num-workers 16
+convnext_s_res448-tta20-ts512 python -u evaluate_tta.py convnext_s_res448 --crops 5 --img-size 512 --num-workers 16
+effv2_s_res448-tta20-ts512 python -u evaluate_tta.py effv2_s_res448 --crops 5 --img-size 512 --num-workers 16
+resnet50_ce_res448-tta20-ts512 python -u evaluate_tta.py resnet50_ce_res448 --crops 5 --img-size 512 --num-workers 16

@@ -31,6 +31,8 @@ def main():
     p.add_argument("run", help="finished train_classifier.py run under results/")
     p.add_argument("--crops", type=int, choices=[1, 5], default=5)
     p.add_argument("--no-flips", action="store_true")
+    p.add_argument("--img-size", type=int, default=None,
+                   help="evaluate at this crop size instead of the training size (FixRes); output gets suffix _ts<size>")
     p.add_argument("--num-workers", type=int, default=min(16, os.cpu_count() or 1))
     p.add_argument("--folds", type=int, nargs="+", default=None, help="default: every fold with a best.pt")
     args = p.parse_args()
@@ -43,9 +45,11 @@ def main():
 
     for k in folds:
         cfg = json.loads((src / f"fold{k}" / "metrics.json").read_text())["config"]
-        resize = cfg.get("resize") or round(cfg["img_size"] * 256 / 224)
-        tf = TTAViews(cfg["img_size"], resize, crops=args.crops, flips=not args.no_flips)
-        out = HWX_DIR / "results" / f"{args.run}_tta{tf.n_views}" / f"fold{k}"
+        size = args.img_size or cfg["img_size"]
+        resize = round(size * 256 / 224) if args.img_size else (cfg.get("resize") or round(size * 256 / 224))
+        tf = TTAViews(size, resize, crops=args.crops, flips=not args.no_flips, color_constancy=cfg.get("color_constancy", False))
+        suffix = f"_tta{tf.n_views}" + (f"_ts{size}" if args.img_size else "")
+        out = HWX_DIR / "results" / f"{args.run}{suffix}" / f"fold{k}"
         out.mkdir(parents=True, exist_ok=True)
 
         train_all = add_cv_folds(load_split("train"), n_folds=cfg["n_folds"], seed=cfg["cv_seed"])
@@ -57,8 +61,8 @@ def main():
         model = model.to(device).to(memory_format=torch.channels_last)
 
         # Keep roughly 512 views of 224 px per forward pass.
-        bs = max(2, int(512 / tf.n_views * (224 / cfg["img_size"]) ** 2))
-        res = {"config": {**cfg, "tta": {"crops": args.crops, "flips": not args.no_flips, "n_views": tf.n_views},
+        bs = max(2, int(512 / tf.n_views * (224 / size) ** 2))
+        res = {"config": {**cfg, "tta": {"crops": args.crops, "flips": not args.no_flips, "n_views": tf.n_views, "test_size": size, "test_resize": resize},
                           "source_run": args.run},
                "best_checkpoint": {}}
         for name, df in splits.items():
@@ -68,7 +72,7 @@ def main():
             res["best_checkpoint"][name] = compute_metrics(labels, probs)
             save_predictions(out / f"pred_{name}.csv", df.image, probs, labels)
         save_json(res, out / "metrics.json")
-        print(f"[{args.run} tta{tf.n_views}] fold {k}\n" + format_metrics(res["best_checkpoint"]["cv_val"], "cv_val")
+        print(f"[{args.run}{suffix}] fold {k}\n" + format_metrics(res["best_checkpoint"]["cv_val"], "cv_val")
               + "\n" + format_metrics(res["best_checkpoint"]["official_test"], "official_test"), flush=True)
 
 

@@ -8,3 +8,4 @@ results/
 slurm/logs/
 report/
 figures/web/
+research/edit_report_*.py

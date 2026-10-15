@@ -1,0 +1,16 @@
+# Round 5: colour constancy (Shades of Grey) and stronger colour augmentation vs resnet50_ce_res448. Plan: research/round5_plan.md
+resnet50_cc_coloraug_res448-fold0 python -u train_classifier.py --run-name resnet50_cc_coloraug_res448 --img-size 448 --color-constancy --augment color --fold 0 --num-workers 16
+resnet50_cc_coloraug_res448-fold1 python -u train_classifier.py --run-name resnet50_cc_coloraug_res448 --img-size 448 --color-constancy --augment color --fold 1 --num-workers 16
+resnet50_cc_coloraug_res448-fold2 python -u train_classifier.py --run-name resnet50_cc_coloraug_res448 --img-size 448 --color-constancy --augment color --fold 2 --num-workers 16
+resnet50_cc_coloraug_res448-fold3 python -u train_classifier.py --run-name resnet50_cc_coloraug_res448 --img-size 448 --color-constancy --augment color --fold 3 --num-workers 16
+resnet50_cc_coloraug_res448-fold4 python -u train_classifier.py --run-name resnet50_cc_coloraug_res448 --img-size 448 --color-constancy --augment color --fold 4 --num-workers 16
+resnet50_cc_res448-fold0 python -u train_classifier.py --run-name resnet50_cc_res448 --img-size 448 --color-constancy --fold 0 --num-workers 16
+resnet50_cc_res448-fold1 python -u train_classifier.py --run-name resnet50_cc_res448 --img-size 448 --color-constancy --fold 1 --num-workers 16
+resnet50_cc_res448-fold2 python -u train_classifier.py --run-name resnet50_cc_res448 --img-size 448 --color-constancy --fold 2 --num-workers 16
+resnet50_cc_res448-fold3 python -u train_classifier.py --run-name resnet50_cc_res448 --img-size 448 --color-constancy --fold 3 --num-workers 16
+resnet50_cc_res448-fold4 python -u train_classifier.py --run-name resnet50_cc_res448 --img-size 448 --color-constancy --fold 4 --num-workers 16
+resnet50_coloraug_res448-fold0 python -u train_classifier.py --run-name resnet50_coloraug_res448 --img-size 448 --augment color --fold 0 --num-workers 16
+resnet50_coloraug_res448-fold1 python -u train_classifier.py --run-name resnet50_coloraug_res448 --img-size 448 --augment color --fold 1 --num-workers 16
+resnet50_coloraug_res448-fold2 python -u train_classifier.py --run-name resnet50_coloraug_res448 --img-size 448 --augment color --fold 2 --num-workers 16
+resnet50_coloraug_res448-fold3 python -u train_classifier.py --run-name resnet50_coloraug_res448 --img-size 448 --augment color --fold 3 --num-workers 16
+resnet50_coloraug_res448-fold4 python -u train_classifier.py --run-name resnet50_coloraug_res448 --img-size 448 --augment color --fold 4 --num-workers 16

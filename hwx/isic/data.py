@@ -104,22 +104,61 @@ class ISICDataset(Dataset):
         return self.transform(img), int(self.labels[idx])
 
 
+class SoftLabelDataset(ISICDataset):
+    """ISICDataset whose target is a vector [hard label, p_1, ..., p_C] (teacher soft labels).
+
+    `soft` maps image id -> length-C probability vector; every image in `df` must have one.
+    """
+
+    def __init__(self, df: pd.DataFrame, transform, soft: dict):
+        super().__init__(df, transform)
+        self.soft = np.stack([soft[im] for im in df["image"]]).astype(np.float32)
+
+    def __getitem__(self, idx):
+        x, y = super().__getitem__(idx)
+        return x, torch.cat([torch.tensor([float(y)]), torch.from_numpy(self.soft[idx])])
+
+
 # ---------------------------------------------------------------------------
 # Transforms
 # ---------------------------------------------------------------------------
-def baseline_transforms(img_size: int = 224, resize: int = 256, augment: str = "basic"):
+class ShadesOfGray:
+    """Shades-of-Grey colour constancy (Finlayson & Trezzi 2004).
+
+    Estimates the illuminant per channel as the Minkowski p-norm mean of the pixel values and rescales the
+    channels so that the illuminant becomes grey. p = 6 follows the ISIC 2019 winning entry (Gessert et al.).
+    """
+
+    def __init__(self, p: float = 6.0):
+        self.p = p
+
+    def __call__(self, img: Image.Image) -> Image.Image:
+        # Illuminant from a 4x-downsampled copy (the p-mean barely changes), then a per-channel lookup table.
+        small = np.asarray(img.reduce(4), dtype=np.float64)
+        illum = np.power(np.mean(np.power(small, self.p), axis=(0, 1)), 1.0 / self.p)
+        gain = 1.0 / (illum / np.sqrt(np.sum(illum ** 2)) * np.sqrt(3.0))
+        lut = [min(255, int(round(v * g))) for g in gain for v in range(256)]
+        return img.point(lut)
+
+
+def baseline_transforms(img_size: int = 224, resize: int = 256, augment: str = "basic", color_constancy: bool = False):
     """Standard ImageNet-style fine-tuning pipeline (downscale, then crop).
 
     augment="basic":   mild color jitter (the baseline).
     augment="trivial": TrivialAugmentWide (one random op per image, random magnitude) instead of the jitter.
+    augment="color":   stronger color jitter (0.3 / 0.3 / 0.3, hue 0.1), for robustness to acquisition shift.
+    color_constancy:   apply Shades-of-Grey colour constancy to every image first (train and eval).
     """
     if augment == "basic":
         color = T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.02)
     elif augment == "trivial":
         color = T.TrivialAugmentWide()
+    elif augment == "color":
+        color = T.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3, hue=0.1)
     else:
         raise ValueError(f"unknown augment {augment!r}")
-    train = T.Compose([
+    pre = [ShadesOfGray()] if color_constancy else []
+    train = T.Compose(pre + [
         T.RandomResizedCrop(img_size, scale=(0.4, 1.0)),
         T.RandomHorizontalFlip(),
         T.RandomVerticalFlip(),
@@ -127,7 +166,7 @@ def baseline_transforms(img_size: int = 224, resize: int = 256, augment: str = "
         T.ToTensor(),
         T.Normalize(IMAGENET_MEAN, IMAGENET_STD),
     ])
-    evaluation = T.Compose([
+    evaluation = T.Compose(pre + [
         T.Resize(resize),
         T.CenterCrop(img_size),
         T.ToTensor(),
@@ -156,9 +195,11 @@ class TTAViews:
     Returns a tensor (n_views, 3, img_size, img_size); predict() averages over the views.
     """
 
-    def __init__(self, img_size: int = 224, resize: int = 256, crops: int = 1, flips: bool = True):
+    def __init__(self, img_size: int = 224, resize: int = 256, crops: int = 1, flips: bool = True,
+                 color_constancy: bool = False):
         assert crops in (1, 5)
         self.img_size, self.resize, self.crops, self.flips = img_size, resize, crops, flips
+        self.cc = ShadesOfGray() if color_constancy else None
         self.normalize = T.Normalize(IMAGENET_MEAN, IMAGENET_STD)
 
     @property
@@ -166,6 +207,8 @@ class TTAViews:
         return self.crops * (4 if self.flips else 1)
 
     def __call__(self, img: Image.Image) -> torch.Tensor:
+        if self.cc is not None:
+            img = self.cc(img)
         x = TF.to_tensor(TF.resize(img, self.resize))
         crops = list(TF.five_crop(x, self.img_size)) if self.crops == 5 else [TF.center_crop(x, self.img_size)]
         views = []

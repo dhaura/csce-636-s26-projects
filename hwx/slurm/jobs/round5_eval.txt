@@ -1,0 +1,4 @@
+# Round 5: 20-view TTA (colour constancy is applied automatically from each run's config).
+resnet50_cc_coloraug_res448-tta20 python -u evaluate_tta.py resnet50_cc_coloraug_res448 --crops 5 --num-workers 16
+resnet50_cc_res448-tta20 python -u evaluate_tta.py resnet50_cc_res448 --crops 5 --num-workers 16
+resnet50_coloraug_res448-tta20 python -u evaluate_tta.py resnet50_coloraug_res448 --crops 5 --num-workers 16
