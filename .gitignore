@@ -221,5 +221,6 @@ __marimo__/
 # Data Files
 */data/*
 
-# Model checkpoints, split indices, and prediction exports
-*/artifacts/
+# Model checkpoints, split indices, and prediction exports (except the final submission)
+*/artifacts/*
+!*/artifacts/submission/

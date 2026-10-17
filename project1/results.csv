@@ -1,0 +1,39 @@
+run,description,validation_macro_sigma,test_macro_sigma,phase1_test_macro_sigma,"test_sigma_(9,4,2)","test_sigma_(9,4,3)","test_sigma_(9,4,4)","test_sigma_(9,4,5)","test_sigma_(9,5,2)","test_sigma_(9,5,3)","test_sigma_(9,5,4)","test_sigma_(9,6,2)","test_sigma_(9,6,3)",kept_in_artifacts
+dnn_v1,"v1 MLP, provided data only, TF 2.15 (Keras 2), 50 epochs",0.864157,0.867494,,0.09257,0.142509,0.420238,2.231532,0.109915,0.398978,2.267675,0.281212,1.862818,no
+dnn_v1_keras3,"v1 MLP, provided data only, TF 2.21 (Keras 3), 50 epochs",0.871809,0.873221,,0.093839,0.146597,0.423782,2.236768,0.115204,0.406365,2.275327,0.291852,1.86925,no
+dnn_v1_extended,"v1 MLP, extended data, 100 epochs, single phase",0.941614,0.946691,,0.135009,0.19122,0.491819,2.270438,0.168599,0.526854,2.344648,0.413345,1.978288,no
+dnn_v1_finetune,"v1 MLP, phase 1 extended (100) + fine-tune provided (150)",0.861561,0.864204,0.946691,0.094175,0.142827,0.408719,2.221539,0.109423,0.393252,2.261982,0.288574,1.85734,no (model overwritten by a mis-named v5 run)
+dnn_v1_finetune_drop0.1,"v1 finetune pipeline, dropout 0.1",0.887167,0.891178,0.97559,0.105728,0.147091,0.427133,2.255683,0.114783,0.415752,2.302853,0.315263,1.936319,no
+dnn_v1_finetune_drop0.25,"v1 finetune pipeline, dropout 0.25",0.96834,0.973853,1.091138,0.166749,0.183126,0.496334,2.312086,0.172322,0.518047,2.404183,0.445365,2.066468,no
+dnn_v1_finetune_drop0.5,"v1 finetune pipeline, dropout 0.5",1.110349,1.116796,1.184934,0.273123,0.232442,0.696691,2.48999,0.260316,0.726972,2.62862,0.532062,2.210949,no
+dnn_v2_finetune,"v2 residual MLP 4x512, phase 1 extended + fine-tune provided",0.798143,0.799961,1.023776,0.060976,0.099209,0.342336,2.186956,0.055948,0.300344,2.23778,0.126384,1.789714,yes
+dnn_v2_finetune_drop0.1,"v2, dropout 0.1",0.831154,0.831687,1.073822,0.07137,0.113522,0.388227,2.232952,0.069743,0.345942,2.291959,0.149522,1.821942,no
+dnn_v2_finetune_drop0.25,"v2, dropout 0.25",0.952665,0.952079,1.086366,0.117939,0.194493,0.512008,2.40544,0.151993,0.482703,2.493339,0.270014,1.940781,no
+dnn_v2_finetune_drop0.5,"v2, dropout 0.5",1.347646,1.346313,1.761068,0.37123,0.455268,0.739738,3.045176,0.421474,0.684421,3.330613,0.485268,2.583627,no
+dnn_v3_bert-small_pretrained,"v3 transformer, BERT-small pretrained weights, dropout 0.1, augmentation",0.807913,0.811482,0.891485,0.076255,0.09854,0.339044,2.212401,0.06533,0.32433,2.274554,0.071637,1.841243,yes
+dnn_v3_bert-small_scratch,"v3 transformer, BERT-small architecture, random weights, dropout 0.1, augmentation",0.792931,0.795869,0.860897,0.094467,0.097874,0.341021,2.186215,0.050755,0.305361,2.236255,0.057515,1.79336,yes
+dnn_v4_A_plain_data,v4 run A: v2 network/optimizer + 30M closed-form hard rows,0.784417,0.785933,1.029174,0.058234,0.091379,0.340511,2.18493,0.047781,0.295456,2.222257,0.082191,1.750655,yes
+dnn_v4_B_drop0,v4 run B: gated 6x512 + AdamW/cosine + augmentation + hard rows,0.955669,0.962308,1.012506,0.194659,0.178513,0.554688,2.404501,0.114346,0.559117,2.453892,0.167681,2.033372,yes
+dnn_v4_B_drop0.1,"v4 run B, dropout 0.1",1.030015,1.036396,1.071286,0.251516,0.232395,0.678076,2.476215,0.155956,0.640132,2.523796,0.280303,2.089178,no
+dnn_v4_B_drop0.25,"v4 run B, dropout 0.25",1.044183,1.051779,1.064486,0.282126,0.262475,0.673288,2.50353,0.168611,0.631767,2.567736,0.248057,2.128421,no
+dnn_v4_B_drop0.5,"v4 run B, dropout 0.5",1.623422,1.632596,1.787598,0.78946,0.623386,0.968764,3.538614,0.540744,0.98863,3.816972,0.789276,2.637515,no
+dnn_v4_A_gated,v4 run A + gated blocks (4x512),0.789357,0.791071,1.568134,0.062373,0.095735,0.348298,2.187508,0.052973,0.303843,2.219794,0.093487,1.755625,yes
+dnn_v4_A_adamw,v4 run A + AdamW/warm-up/cosine,0.78824,0.788921,0.926488,0.058693,0.093611,0.338471,2.181299,0.0494,0.293826,2.22064,0.093083,1.771262,yes
+dnn_v4_A_augment,v4 run A + random permutations/sign flips (hurts: data has positional structure),0.956712,0.961173,1.168476,0.206389,0.187211,0.571784,2.423949,0.110801,0.546874,2.453215,0.133325,2.017013,yes
+dnn_v4_A_ft150,v4 run A + 150 fine-tuning epochs (early-stopped at 96),0.784411,0.785936,1.029174,0.058233,0.091377,0.340489,2.184915,0.047782,0.295438,2.222261,0.082181,1.750745,yes
+dnn_v4_A_w1024_b6,"v4 run A, width 1024, 6 blocks, 150 fine-tuning epochs",0.788182,0.789357,1.842604,0.0571,0.092658,0.349031,2.187988,0.049831,0.305256,2.222123,0.091351,1.748872,yes
+ensemble,Average of dnn_v2_finetune + dnn_v4_A_adamw + dnn_v3_bert-small_scratch + dnn_v3_bert-small_pretrained,0.760545,0.762854,,0.056934,0.078157,0.304237,2.164064,0.037837,0.264551,2.201178,0.052396,1.706331,yes
+dnn_v5_4-2,"v5 specialist for (9,4,2) only (v4 run A recipe + all-setting vertex data + hard data)",0.036874,0.03693,0.07134,0.03693,,,,,,,,,no (replaced by the _ft200 run)
+dnn_v5_4-3,"v5 specialist for (9,4,3) only (v4 run A recipe + all-setting vertex data + hard data)",0.071966,0.073248,0.109519,,0.073248,,,,,,,,yes
+dnn_v5_4-4,"v5 specialist for (9,4,4) only (v4 run A recipe + all-setting vertex data + hard data)",0.290201,0.289192,0.472442,,,0.289192,,,,,,,no (replaced by the _ft200 run)
+dnn_v5_4-5,"v5 specialist for (9,4,5) only (v4 run A recipe + all-setting vertex data + hard data)",2.170935,2.190081,2.281686,,,,2.190081,,,,,,yes
+dnn_v5_5-2,"v5 specialist for (9,5,2) only (v4 run A recipe + all-setting vertex data + hard data)",0.019049,0.01943,0.058099,,,,,0.01943,,,,,no (replaced by the _ft200 run)
+dnn_v5_5-3,"v5 specialist for (9,5,3) only (v4 run A recipe + all-setting vertex data + hard data)",0.235558,0.241174,0.42817,,,,,,0.241174,,,,yes
+dnn_v5_5-4,"v5 specialist for (9,5,4) only (v4 run A recipe + all-setting vertex data + hard data)",2.205874,2.224609,2.337368,,,,,,,2.224609,,,no (replaced by the _ft200 run)
+dnn_v5_6-2,"v5 specialist for (9,6,2) only (v4 run A recipe + all-setting vertex data + hard data)",0.014352,0.014143,0.040212,,,,,,,,0.014143,,no (replaced by the _ft200 run)
+dnn_v5_6-3,"v5 specialist for (9,6,3) only (v4 run A recipe + all-setting vertex data + hard data)",1.771464,1.743285,1.962786,,,,,,,,,1.743285,yes
+dnn_v5_4-2_ft200,"v5 specialist for (9,4,2), fine-tuning up to 200 epochs",0.036795,0.036856,0.07134,0.036856,,,,,,,,,yes
+dnn_v5_4-4_ft200,"v5 specialist for (9,4,4), fine-tuning up to 200 epochs",0.289955,0.288934,0.472442,,,0.288934,,,,,,,yes
+dnn_v5_5-2_ft200,"v5 specialist for (9,5,2), fine-tuning up to 200 epochs",0.019049,0.01943,0.058099,,,,,0.01943,,,,,yes
+dnn_v5_5-4_ft200,"v5 specialist for (9,5,4), fine-tuning up to 200 epochs",2.205867,2.224607,2.337368,,,,,,,2.224607,,,yes
+dnn_v5_6-2_ft200,"v5 specialist for (9,6,2), fine-tuning up to 200 epochs",0.014341,0.014133,0.040212,,,,,,,,0.014133,,yes
