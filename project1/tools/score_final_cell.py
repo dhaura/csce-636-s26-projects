@@ -15,7 +15,7 @@ notebook, model, test_input, test_heights, out = sys.argv[1:6]
 cell = nbformat.read(notebook, as_version=4).cells[-1].source
 for a, b in (('TEST_INPUT_PATH = "CSCE-636-Project-1-Test-n_k_m_P"', f'TEST_INPUT_PATH = "{test_input}"'),
              ('OUTPUT_PATH = "CSCE-636-Project-1-Test-mHeights"', f'OUTPUT_PATH = "{out}"'),
-             ('MODEL_FILES = ["final_model.keras", "artifacts/submission/final_model.keras"]', f'MODEL_FILES = ["{model}"]')):
+             ('MODEL_FILES = ["final_model_v8.keras", "artifacts/submission/final_model_v8.keras"]', f'MODEL_FILES = ["{model}"]')):
     assert a in cell, a
     cell = cell.replace(a, b)
 cell = "\n".join(l.replace("%pip", "pass  # %pip", 1) if l.lstrip().startswith("%pip") else l for l in cell.splitlines())

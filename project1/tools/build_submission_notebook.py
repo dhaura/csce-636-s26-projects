@@ -627,14 +627,14 @@ cells.append(md(r"""## 7. Final Network and Its Performance
 
 **Per-setting networks.** Each setting's trained network is saved as `final_k{k}_m{m}.keras`. (With `MHEIGHT_SEEDS` > 1, the setting's networks would be combined there by an `Average` layer over their $\log_2$ predictions.)
 
-**One final model.** The 9 per-setting networks are then joined into a single Keras model, `final_model.keras`, which is the submitted network:
+**One final model.** The 9 per-setting networks are then joined into a single Keras model, `final_model_v8.keras`, which is the submitted network:
 1. **Selection mask:** from the input $[n, k, m]$, a fixed `Dense` layer computes $\pm(k - k_s)$ and $\pm(m - m_s)$ for each setting $s$. `ReLU` turns these into $|k - k_s|$ and $|m - m_s|$, and a second fixed `Dense` + `ReLU` computes $\max(0,\ 1 - |k-k_s| - |m-m_s|)$. Because $k$ and $m$ are integers, this is exactly 1 for the sample's own setting and 0 for the other eight.
 2. **Networks:** all 9 per-setting networks run on the sample, as sub-models.
 3. **Output:** their outputs are multiplied by the mask (`Multiply`) and summed (`Dense` with weights 1), so the output is the $\log_2$ prediction of the sample's own network, still in $[0, 100]$.
 
-The cell checks that `final_model.keras` gives the same predictions as the 9 per-setting networks.
+The cell checks that `final_model_v8.keras` gives the same predictions as the 9 per-setting networks.
 
-**Performance** is the cost $\sigma_{n,k,m}$ of `final_model.keras` on the provided **validation** rows (used for epoch selection) and on the held-out **test** rows (used only here), together with the mean over the 9 settings. Predictions are made exactly as in the final cell (on the CPU, in batches of 1,024, with an XLA-compiled forward pass).
+**Performance** is the cost $\sigma_{n,k,m}$ of `final_model_v8.keras` on the provided **validation** rows (used for epoch selection) and on the held-out **test** rows (used only here), together with the mean over the 9 settings. Predictions are made exactly as in the final cell (on the CPU, in batches of 1,024, with an XLA-compiled forward pass).
 """))
 
 cells.append(code(r'''def predict_log2(network, X, params):
@@ -688,9 +688,9 @@ for setting in SETTINGS:
 setting_files = [RUN_DIR / f"final_k{k}_m{m}.keras" for n, k, m in SETTINGS_ALL]
 if all(path.exists() for path in setting_files):
     with tf.device("/CPU:0"):
-        combine_settings(setting_files).save(RUN_DIR / "final_model.keras")
-        evaluated = tf.keras.models.load_model(str(RUN_DIR / "final_model.keras"), compile=False)
-    print(f"Saved {RUN_DIR / 'final_model.keras'} ({evaluated.count_params():,} parameters)")
+        combine_settings(setting_files).save(RUN_DIR / "final_model_v8.keras")
+        evaluated = tf.keras.models.load_model(str(RUN_DIR / "final_model_v8.keras"), compile=False)
+    print(f"Saved {RUN_DIR / 'final_model_v8.keras'} ({evaluated.count_params():,} parameters)")
 else:
     evaluated = None
     print("Not all 9 settings are trained yet; evaluating the per-setting networks of this run")
@@ -706,7 +706,7 @@ for setting in SETTINGS:
         z = predict_log2(evaluated or own, provided_P[rows], params)
         if evaluated is not None and split == "validation":
             gap = np.abs(z - predict_log2(own, provided_P[rows], params)).max()
-            print(f"{setting}: final_model.keras matches the per-setting network (max |difference| {gap:.1e})")
+            print(f"{setting}: final_model_v8.keras matches the per-setting network (max |difference| {gap:.1e})")
         report[str(setting)][split] = float(np.mean((np.log2(labels[rows]) - z) ** 2))
     print(f"{setting}: validation sigma {report[str(setting)]['validation']:.4f} | test sigma {report[str(setting)]['test']:.4f}")
 done = [report[str(s)] for s in SETTINGS]
@@ -719,7 +719,7 @@ cells.append(md(r"""## 8. Final Cell: Predict m-Heights for a Test File
 
 This is the cell for testing the trained model. It is **self-contained** - in a fresh session, run only this cell. On Colab it first installs the pinned TensorFlow/Keras versions. No training cells or training data are needed.
 
-1. Place the trained model `final_model.keras` next to this notebook. When run from the project folder, the cell also finds it in `artifacts/submission/`.
+1. Place the trained model `final_model_v8.keras` next to this notebook. When run from the project folder, the cell also finds it in `artifacts/submission/`.
 2. Set `TEST_INPUT_PATH` to the test file: a pickled list of samples `[n, k, m, P]`, in the same format as `CSCE-636-Project-1-Train-n_k_m_P`.
 3. Run the cell. It writes `OUTPUT_PATH`: a pickled list of predicted m-heights (Python floats), one per input sample in the same order, in the same format as `CSCE-636-Project-1-Train-mHeights`.
 
@@ -745,7 +745,7 @@ if "google.colab" in sys.modules and tf.__version__ != "2.21.0":
 
 TEST_INPUT_PATH = "CSCE-636-Project-1-Test-n_k_m_P"   # pickled list of [n, k, m, P]
 OUTPUT_PATH = "CSCE-636-Project-1-Test-mHeights"      # pickled list of predicted m-heights
-MODEL_FILES = ["final_model.keras", "artifacts/submission/final_model.keras"]
+MODEL_FILES = ["final_model_v8.keras", "artifacts/submission/final_model_v8.keras"]
 BATCH = 1024
 USE_GPU = False   # True: faster on a GPU runtime; CPU (default) reproduces submitted predictions exactly
 
@@ -782,7 +782,7 @@ else:
         matrices[row, :k, :n - k] = P
         parameters[row] = (n, k, m)
 
-    # final_model.keras selects, for every sample, the output of the network of its (k, m). Running each
+    # final_model_v8.keras selects, for every sample, the output of the network of its (k, m). Running each
     # group of samples through that network alone gives identical outputs and avoids evaluating all 9.
     log2_heights = np.full(len(samples), np.nan)
     for k, m in sorted({(int(p[1]), int(p[2])) for p in parameters}):
