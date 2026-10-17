@@ -1,16 +1,9 @@
 # csce-636-s26-projects
 
-## Project 1
+## Project 1: DNN estimation of the m-height of analog codes
 
-A quick Jupyter Notebook deep-learning starter is available in:
+The code is in [`project1/`](project1/):
 
-- `/home/runner/work/csce-636-s26-projects/csce-636-s26-projects/project1`
-
-From that folder:
-
-```bash
-pip install -r requirements.txt
-jupyter lab
-```
-
-Then open `project1_starter.ipynb`.
+- [`project1/project1_v1.ipynb`](project1/project1_v1.ipynb): the model, which is pre-trained on extended data and fine-tuned on the provided data.
+- [`project1/README.md`](project1/README.md): model, data, environment and how to run.
+- [`project1/GENERATION.md`](project1/GENERATION.md): LP-based generation of extra training data.
