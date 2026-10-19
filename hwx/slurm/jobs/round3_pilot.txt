@@ -1,0 +1,10 @@
+# Round 3 phase 1: learning-rate pilot for stronger backbones. 224 px, fold 0 only, plain CE, 30 epochs.
+# LR chosen per backbone by fold-0 CV balanced accuracy (after logit adjustment); never by test. Longest first.
+pilot224_dinov2_b14_lr2e-4-fold0 python -u train_classifier.py --run-name pilot224_dinov2_b14_lr2e-4 --model vit_base_patch14_dinov2.lvd142m --lr 2e-4 --fold 0 --num-workers 16
+pilot224_dinov2_b14_lr5e-5-fold0 python -u train_classifier.py --run-name pilot224_dinov2_b14_lr5e-5 --model vit_base_patch14_dinov2.lvd142m --lr 5e-5 --fold 0 --num-workers 16
+pilot224_convnext_s_lr2e-4-fold0 python -u train_classifier.py --run-name pilot224_convnext_s_lr2e-4 --model convnext_small.fb_in22k_ft_in1k --lr 2e-4 --fold 0 --num-workers 16
+pilot224_convnext_s_lr5e-5-fold0 python -u train_classifier.py --run-name pilot224_convnext_s_lr5e-5 --model convnext_small.fb_in22k_ft_in1k --lr 5e-5 --fold 0 --num-workers 16
+pilot224_vit_b16_lr2e-4-fold0 python -u train_classifier.py --run-name pilot224_vit_b16_lr2e-4 --model vit_base_patch16_224.augreg2_in21k_ft_in1k --lr 2e-4 --fold 0 --num-workers 16
+pilot224_vit_b16_lr5e-5-fold0 python -u train_classifier.py --run-name pilot224_vit_b16_lr5e-5 --model vit_base_patch16_224.augreg2_in21k_ft_in1k --lr 5e-5 --fold 0 --num-workers 16
+pilot224_effv2_s_lr2e-4-fold0 python -u train_classifier.py --run-name pilot224_effv2_s_lr2e-4 --model tf_efficientnetv2_s.in21k_ft_in1k --lr 2e-4 --fold 0 --num-workers 16
+pilot224_effv2_s_lr5e-5-fold0 python -u train_classifier.py --run-name pilot224_effv2_s_lr5e-5 --model tf_efficientnetv2_s.in21k_ft_in1k --lr 5e-5 --fold 0 --num-workers 16

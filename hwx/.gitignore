@@ -1,0 +1,11 @@
+# conda env, data and run outputs stay local
+.conda-env/
+setup_env.log
+data/isic2018/
+data/zips/
+data/download.log
+results/
+slurm/logs/
+report/
+figures/web/
+research/edit_report_*.py

@@ -1,0 +1,22 @@
+# Round 2: one factor changed vs resnet50_ce (plain CE, 224 px, 30 epochs, basic aug, same seed/folds).
+# Generated; longest jobs first. Run: python slurm/run_queue.py slurm/jobs/round2_train.txt --gpus 4
+resnet50_ce_res448-fold0 python -u train_classifier.py --run-name resnet50_ce_res448 --img-size 448 --fold 0 --num-workers 16
+resnet50_ce_res448-fold1 python -u train_classifier.py --run-name resnet50_ce_res448 --img-size 448 --fold 1 --num-workers 16
+resnet50_ce_res448-fold2 python -u train_classifier.py --run-name resnet50_ce_res448 --img-size 448 --fold 2 --num-workers 16
+resnet50_ce_res448-fold3 python -u train_classifier.py --run-name resnet50_ce_res448 --img-size 448 --fold 3 --num-workers 16
+resnet50_ce_res448-fold4 python -u train_classifier.py --run-name resnet50_ce_res448 --img-size 448 --fold 4 --num-workers 16
+resnet50_ce_res384-fold0 python -u train_classifier.py --run-name resnet50_ce_res384 --img-size 384 --fold 0 --num-workers 16
+resnet50_ce_res384-fold1 python -u train_classifier.py --run-name resnet50_ce_res384 --img-size 384 --fold 1 --num-workers 16
+resnet50_ce_res384-fold2 python -u train_classifier.py --run-name resnet50_ce_res384 --img-size 384 --fold 2 --num-workers 16
+resnet50_ce_res384-fold3 python -u train_classifier.py --run-name resnet50_ce_res384 --img-size 384 --fold 3 --num-workers 16
+resnet50_ce_res384-fold4 python -u train_classifier.py --run-name resnet50_ce_res384 --img-size 384 --fold 4 --num-workers 16
+resnet50_ce_ep60-fold0 python -u train_classifier.py --run-name resnet50_ce_ep60 --epochs 60 --fold 0 --num-workers 16
+resnet50_ce_ep60-fold1 python -u train_classifier.py --run-name resnet50_ce_ep60 --epochs 60 --fold 1 --num-workers 16
+resnet50_ce_ep60-fold2 python -u train_classifier.py --run-name resnet50_ce_ep60 --epochs 60 --fold 2 --num-workers 16
+resnet50_ce_ep60-fold3 python -u train_classifier.py --run-name resnet50_ce_ep60 --epochs 60 --fold 3 --num-workers 16
+resnet50_ce_ep60-fold4 python -u train_classifier.py --run-name resnet50_ce_ep60 --epochs 60 --fold 4 --num-workers 16
+resnet50_ce_trivial-fold0 python -u train_classifier.py --run-name resnet50_ce_trivial --augment trivial --fold 0 --num-workers 16
+resnet50_ce_trivial-fold1 python -u train_classifier.py --run-name resnet50_ce_trivial --augment trivial --fold 1 --num-workers 16
+resnet50_ce_trivial-fold2 python -u train_classifier.py --run-name resnet50_ce_trivial --augment trivial --fold 2 --num-workers 16
+resnet50_ce_trivial-fold3 python -u train_classifier.py --run-name resnet50_ce_trivial --augment trivial --fold 3 --num-workers 16
+resnet50_ce_trivial-fold4 python -u train_classifier.py --run-name resnet50_ce_trivial --augment trivial --fold 4 --num-workers 16

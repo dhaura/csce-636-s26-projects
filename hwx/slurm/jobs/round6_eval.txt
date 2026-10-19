@@ -1,0 +1,3 @@
+# Round 6: 20-view TTA of the transformer students.
+dinov2_b14_kd_res448-tta20 python -u evaluate_tta.py dinov2_b14_kd_res448 --crops 5 --num-workers 16
+vit_b16_kd_res448-tta20 python -u evaluate_tta.py vit_b16_kd_res448 --crops 5 --num-workers 16
