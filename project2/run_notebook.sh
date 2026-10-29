@@ -11,18 +11,18 @@
 #SBATCH --output=/pscratch/sd/d/dhaura/repos/csce-636-s26-projects/project2/artifacts/notebook-%j.out
 #SBATCH --error=/pscratch/sd/d/dhaura/repos/csce-636-s26-projects/project2/artifacts/notebook-%j.err
 
-# Executes $NOTEBOOK (default project2_v1.ipynb) headlessly on one shared A100 with the project environment
+# Executes $NOTEBOOK (default project2_v7.ipynb) headlessly on one shared A100 with the project environment
 # (TensorFlow 2.21 / Keras 3). Everything from a run goes to artifacts/$MHEIGHT_RUN/:
 # the executed notebook (<notebook>_executed.ipynb), the Slurm .out/.err logs, the model,
 # history, costs and split indices. The source notebook itself is not modified.
 #
 # Submit with, e.g.:
-#   MHEIGHT_RUN=dnn_v1_finetune sbatch --account=m4012_g run_notebook.sh       # project2_v1.ipynb -> dnn_v1_finetune
-#   MHEIGHT_RUN=dnn_v1_long MHEIGHT_PRETRAIN_EPOCHS=100 MHEIGHT_FINETUNE_EPOCHS=150 sbatch --account=m4012_g run_notebook.sh
+#   MHEIGHT_RUN=p2_v7 sbatch --account=m4012_g run_notebook.sh                 # project2_v7.ipynb -> artifacts/p2_v7
+#   MHEIGHT_RUN=p2_v7_all MHEIGHT_SETTINGS=5-4 MHEIGHT_VERSIONS=V7 sbatch --account=m4012_g --time=16:00:00 run_notebook.sh
 #   NOTEBOOK=other.ipynb MHEIGHT_RUN=other_run sbatch --account=m4012_g run_notebook.sh
 set -euo pipefail
 PROJECT_DIR="${PROJECT_DIR:-/pscratch/sd/d/dhaura/repos/csce-636-s26-projects/project2}"
-NOTEBOOK="${NOTEBOOK:-project2_v1.ipynb}"
+NOTEBOOK="${NOTEBOOK:-project2_v7.ipynb}"
 export MHEIGHT_DATASET="${MHEIGHT_DATASET:-extended}"
 # Require an explicit run name, so different runs can never write into the same folder.
 : "${MHEIGHT_RUN:?Set MHEIGHT_RUN to the output folder name under artifacts/}"
