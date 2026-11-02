@@ -1,0 +1,5 @@
+# HW Y round 4 (node b): TTA-20 + logit adjustment
+cnx_kd_r1_rect_s1-tta20 python -u scripts/evaluate_tta.py cnx_kd_r1_rect_s1 --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r1_rect_s1_tta20
+cnx_kd_r1_rect_s1_ema-tta20 python -u scripts/evaluate_tta.py cnx_kd_r1_rect_s1_ema --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r1_rect_s1_ema_tta20
+cnx_kd_r4_cons_s1-tta20 python -u scripts/evaluate_tta.py cnx_kd_r4_cons_s1 --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r4_cons_s1_tta20
+cnx_kd_r4_cons_s1_ema-tta20 python -u scripts/evaluate_tta.py cnx_kd_r4_cons_s1_ema --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r4_cons_s1_ema_tta20

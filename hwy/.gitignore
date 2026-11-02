@@ -1,0 +1,7 @@
+# shared via setup_links.sh, downloads and run outputs stay local
+.conda-env
+data/isic2018
+data/ham10000_extra/
+results/
+slurm/logs/
+report/

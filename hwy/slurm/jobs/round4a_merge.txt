@@ -1,0 +1,2 @@
+# HW Y round 4 (node A): calibrate and merge the per-view teacher predictions
+teacher_views-merge python -u scripts/teacher_views.py merge --out results/teacher_views/bb5_rect_v16
