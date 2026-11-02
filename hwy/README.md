@@ -54,11 +54,13 @@ hwy/
 │   ├── lesion_segmenter.py        # (new) per-fold lesion segmenter -> lesion boxes
 │   ├── model_soup.py              # (new) uniform weight averaging of fine-tuned runs, fold by fold
 │   ├── teacher_views.py           # (new) 16 stored views per image, out-of-fold teacher labels for each view
+│   ├── make_figures.py            # slide figures -> figures/ (HW X style, regenerated from results/)
 │   ├── evaluate_tta.py, posthoc_logit_adjustment.py, compare_runs.py, ...  # as in Homework X
 ├── 01_round1_single_factors.ipynb      # round 1: six changes, one at a time
 ├── 02_round2_combination_noise.ipynb   # round 2: combination, drop path rate, seed noise, cross-fitted EMA
 ├── 03_round3_model_soup.ipynb          # round 3: model soups vs ingredients vs ensembles
 ├── 04_round4_consistent_distillation.ipynb  # round 4: per-view teacher labels, 2 seeds per arm, α 0.9
+├── figures/                       # slide figures (fig01_ladder … fig09_arch_final), .png + .pdf
 ├── research/                      # plans (written before results), feasibility checks, round analyses, notebook generators
 ├── slurm/                         # node driver + GPU job queue; job lists per round in slurm/jobs/
 ├── report/                        # (local only, git-ignored) builds the online results page and guide
@@ -130,3 +132,18 @@ student trains on those views with their own labels (Beyer et al., CVPR 2022). T
 **Final model by the pre-registered rules:** consistent distillation with α 0.9 (`cnx_kd_r4_cons_a09_ema`), CV 0.914, test
 0.860 (95% CI 0.833–0.885). The step that held up is consistent distillation with α 0.5 (`cnx_kd_r4_cons_ema`): CV 0.907,
 test **0.870** (95% CI 0.845–0.893), +0.006 over the baseline. The 0.88 target is not reached.
+
+## Figures
+`python scripts/make_figures.py` (or `--only fig03 fig07`) writes the slide figures to `figures/`:
+
+| Figure | Shows |
+|---|---|
+| `fig01_ladder` | test balanced accuracy of each adopted step, baseline 0.864 → 0.870 |
+| `fig02_all_changes` | all 13 changes vs the baseline (CV and test), against the seed-noise band |
+| `fig03_consistent_vs_fixed` | per-fold comparison of consistent vs fixed labels, 2 seeds each |
+| `fig04_seed_noise` | seed 1 − seed 0 for three recipes vs the consistent-distillation gain |
+| `fig05_cv_vs_test` | CV against test for every network; α 0.9 drifts off the usual gap |
+| `fig06_recall` | per-class test recall: baseline, fixed labels, consistent labels, α 0.9 |
+| `fig07_views` | one melanoma's stored views and the teacher's per-view P(MEL) |
+| `fig08_arch_consistent` | fixed vs consistent distillation targets (diagram) |
+| `fig09_arch_final` | the HW Y single model, training and prediction (diagram) |
