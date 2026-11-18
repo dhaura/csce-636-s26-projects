@@ -1,0 +1,6 @@
+# HW Y round 1 (node B), step 1: lesion segmenter per CV fold
+lesion_seg-fold0 python -u scripts/lesion_segmenter.py train --fold 0 --num-workers 16
+lesion_seg-fold1 python -u scripts/lesion_segmenter.py train --fold 1 --num-workers 16
+lesion_seg-fold2 python -u scripts/lesion_segmenter.py train --fold 2 --num-workers 16
+lesion_seg-fold3 python -u scripts/lesion_segmenter.py train --fold 3 --num-workers 16
+lesion_seg-fold4 python -u scripts/lesion_segmenter.py train --fold 4 --num-workers 16

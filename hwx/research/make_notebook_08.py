@@ -38,10 +38,10 @@ def run(cmd):
     subprocess.run(cmd, shell=True, check=True, cwd=HWX_DIR)
 
 if RUN_TRAINING:
-    run("python train_classifier.py --run-name dinov2_b14_kd_res448 --model vit_base_patch14_dinov2.lvd142m --lr 5e-5 --img-size 448 "
+    run("python scripts/train_classifier.py --run-name dinov2_b14_kd_res448 --model vit_base_patch14_dinov2.lvd142m --lr 5e-5 --img-size 448 "
         "--soft-labels results/soft_labels/bb5_calib_oof.csv --kd-alpha 0.5 --fold 0")
-    run("python evaluate_tta.py dinov2_b14_kd_res448 --crops 5 --folds 0")
-    run("python posthoc_logit_adjustment.py dinov2_b14_kd_res448_tta20")
+    run("python scripts/evaluate_tta.py dinov2_b14_kd_res448 --crops 5 --folds 0")
+    run("python scripts/posthoc_logit_adjustment.py dinov2_b14_kd_res448_tta20")
 '''),
 ("markdown", "## 1. Students vs hard-label twins, all five architectures (official test, paired over folds)"),
 ("code", r'''

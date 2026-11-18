@@ -32,7 +32,7 @@ def sh(*args):
 # 1. logit adjustment of the new students
 for _, key in PAIRS[3:]:
     if not (A.RESULTS / kd(key)).exists():
-        sh("posthoc_logit_adjustment.py", f"{key}_kd_res448_tta20")
+        sh("scripts/posthoc_logit_adjustment.py", f"{key}_kd_res448_tta20")
 
 # 2. primary: each student vs its hard-label twin (test, paired)
 rows, diffs = [], []
@@ -53,7 +53,7 @@ BB = ["resnet50_ce_res448_tta20", "convnext_s_res448_tta20", "effv2_s_res448_tta
 KD5 = [f"{key}_kd_res448_tta20" for _, key in PAIRS]
 for tag, members in [("kd5", KD5), ("bb5kd5", BB + KD5)]:
     if not (A.RESULTS / f"dl_{tag}_calib_tau").exists():
-        sh("decision_layer.py", "--members", *members, "--tag", tag, "--save", "calib_tau")
+        sh("scripts/decision_layer.py", "--members", *members, "--tag", tag, "--save", "calib_tau")
 
 
 def all_models(run):

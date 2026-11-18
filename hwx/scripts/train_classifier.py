@@ -6,13 +6,14 @@ downscaled crops, AdamW 2e-4, 30 epochs, warm-up + cosine, model selection on th
 balanced accuracy). Flags change one factor at a time so experiments stay controlled.
 
 Examples:
-    python train_classifier.py --run-name resnet50_ce  --fold 0                         # baseline
-    python train_classifier.py --run-name resnet50_wce --fold 0 --loss-weighting inverse  # + Gessert loss weighting
-    python train_classifier.py --run-name tmp --smoke-test                               # 1-minute pipeline check
+    python scripts/train_classifier.py --run-name resnet50_ce  --fold 0                         # baseline
+    python scripts/train_classifier.py --run-name resnet50_wce --fold 0 --loss-weighting inverse  # + Gessert loss weighting
+    python scripts/train_classifier.py --run-name tmp --smoke-test                               # 1-minute pipeline check
 
 Outputs: results/<run-name>/fold<k>/{best.pt, history.csv, metrics.json, pred_<split>.csv}.
 Compare runs with compare_runs.py.
 """
+import sys
 import argparse
 import os
 import time
@@ -24,13 +25,14 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic.data import (CLASSES, ISICDataset, SoftLabelDataset, add_cv_folds, baseline_transforms, class_counts,
                        class_weights, load_split)
 from isic.engine import get_device, predict, save_json, save_predictions, seed_everything, train_one_epoch
 from isic.metrics import compute_metrics, format_metrics
 from isic.models import build_model
 
-HWX_DIR = Path(__file__).resolve().parent
+HWX_DIR = Path(__file__).resolve().parents[1]
 
 
 def parse_args():

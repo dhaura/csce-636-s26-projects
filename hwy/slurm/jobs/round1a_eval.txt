@@ -1,0 +1,7 @@
+# HW Y round 1 (node A): TTA-20 + logit adjustment of the raw and EMA weights
+cnx_kd_r1_base-tta20 python -u scripts/evaluate_tta.py cnx_kd_r1_base --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r1_base_tta20
+cnx_kd_r1_base_ema-tta20 python -u scripts/evaluate_tta.py cnx_kd_r1_base_ema --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r1_base_ema_tta20
+cnx_kd_r1_dp02-tta20 python -u scripts/evaluate_tta.py cnx_kd_r1_dp02 --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r1_dp02_tta20
+cnx_kd_r1_dp02_ema-tta20 python -u scripts/evaluate_tta.py cnx_kd_r1_dp02_ema --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r1_dp02_ema_tta20
+cnx_kd_r1_lld-tta20 python -u scripts/evaluate_tta.py cnx_kd_r1_lld --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r1_lld_tta20
+cnx_kd_r1_lld_ema-tta20 python -u scripts/evaluate_tta.py cnx_kd_r1_lld_ema --crops 5 --num-workers 16 && python -u scripts/posthoc_logit_adjustment.py cnx_kd_r1_lld_ema_tta20

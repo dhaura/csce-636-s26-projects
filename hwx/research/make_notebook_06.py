@@ -48,7 +48,7 @@ official ISIC 2018 Task 3 test set (balanced multiclass accuracy):
 1. **Decision layer.** Round 3 showed better ranking (AUC) without better balanced accuracy. Can a decision layer fitted on
    **out-of-fold (OOF)** predictions fix this? Selection by **nested CV** (fit on 4 folds' OOF, score the 5th).
 2. **Out-of-fold ensemble distillation (main contribution).** Train single students on the calibrated OOF probabilities of
-   the 5-backbone ensemble (`make_soft_labels.py`; loss = 0.5·CE(hard) + 0.5·CE(soft)). Settings fixed in advance.
+   the 5-backbone ensemble (`scripts/make_soft_labels.py`; loss = 0.5·CE(hard) + 0.5·CE(soft)). Settings fixed in advance.
    *Caveat:* a student's soft labels come from fold models trained on its own CV fold, so student CV is optimistic;
    students are judged on the **test set**, against hard-label twins, with no variant selection.
 3. **FixRes.** Evaluate the CNN checkpoints at 512 px instead of 448 px; adopt only if a member's own CV improves.
@@ -56,11 +56,11 @@ official ISIC 2018 Task 3 test set (balanced multiclass accuracy):
 ("code", SETUP),
 ("code", r'''
 if RUN_TRAINING:
-    run("python make_soft_labels.py --members " + " ".join(BB) + " --out results/soft_labels/bb5_calib_oof.csv")
-    run("python train_classifier.py --run-name convnext_s_kd_res448 --model convnext_small.fb_in22k_ft_in1k --lr 2e-4 "
+    run("python scripts/make_soft_labels.py --members " + " ".join(BB) + " --out results/soft_labels/bb5_calib_oof.csv")
+    run("python scripts/train_classifier.py --run-name convnext_s_kd_res448 --model convnext_small.fb_in22k_ft_in1k --lr 2e-4 "
         "--img-size 448 --soft-labels results/soft_labels/bb5_calib_oof.csv --kd-alpha 0.5 --fold 0")
-    run("python evaluate_tta.py convnext_s_kd_res448 --crops 5 --folds 0")
-    run("python posthoc_logit_adjustment.py convnext_s_kd_res448_tta20")
+    run("python scripts/evaluate_tta.py convnext_s_kd_res448 --crops 5 --folds 0")
+    run("python scripts/posthoc_logit_adjustment.py convnext_s_kd_res448_tta20")
 '''),
 ("markdown", "## 1. Decision layers on out-of-fold predictions (nested CV)"),
 ("code", r'''

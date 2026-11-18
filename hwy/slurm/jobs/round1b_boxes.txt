@@ -1,0 +1,2 @@
+# HW Y round 1 (node B), step 2: predicted masks -> lesion boxes (OOF for training images, 5-fold mean for val/test)
+lesion_seg-boxes python -u scripts/lesion_segmenter.py boxes

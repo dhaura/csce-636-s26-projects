@@ -1,7 +1,7 @@
 #!/bin/bash
 # Gessert et al. 2018 literature baseline: 5-fold CV, one array task per fold.
 # Submit from hwx/:  sbatch slurm/gessert2018_cv.sbatch
-# Afterwards:        .conda-env/bin/python literature_baseline_gessert2018.py --summarize
+# Afterwards:        .conda-env/bin/python scripts/literature_baseline_gessert2018.py --summarize
 #SBATCH -J isic-gessert2018
 #SBATCH -A m4012
 #SBATCH -C gpu
@@ -18,4 +18,4 @@ export PATH="$PWD/.conda-env/bin:$PATH"
 export TORCH_HOME="$SCRATCH/.cache/torch" HF_HOME="$SCRATCH/.cache/huggingface"
 
 nvidia-smi -L
-python literature_baseline_gessert2018.py --fold "$SLURM_ARRAY_TASK_ID" --num-workers 16 "$@"
+python scripts/literature_baseline_gessert2018.py --fold "$SLURM_ARRAY_TASK_ID" --num-workers 16 "$@"

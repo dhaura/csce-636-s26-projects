@@ -20,7 +20,7 @@ worker() {  # worker <gpu>: runs every 4th job
     local gpu=$1
     for ((i = gpu; i < ${#JOBS[@]}; i += 4)); do
         read -r name weighting k <<< "${JOBS[$i]}"
-        CUDA_VISIBLE_DEVICES=$gpu python -u train_classifier.py --run-name "$name" --loss-weighting "$weighting" \
+        CUDA_VISIBLE_DEVICES=$gpu python -u scripts/train_classifier.py --run-name "$name" --loss-weighting "$weighting" \
             --fold "$k" --num-workers 16 > "$LOGS/$name-fold$k.out" 2>&1
         echo "$(date +%T) $name fold $k finished (exit $?) on GPU $gpu"
     done
@@ -30,6 +30,6 @@ echo "$(date +%T) starting ${#JOBS[@]} runs"
 for g in 0 1 2 3; do worker "$g" & done
 wait
 
-python compare_runs.py resnet50_ce resnet50_wce gessert2018_densenet121 \
+python scripts/compare_runs.py resnet50_ce resnet50_wce gessert2018_densenet121 \
     --out results/comparisons/loss_weighting.json > "$LOGS/compare_loss_weighting.out" 2>&1
 echo "$(date +%T) all done"

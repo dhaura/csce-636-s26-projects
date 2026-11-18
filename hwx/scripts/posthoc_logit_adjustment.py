@@ -15,20 +15,22 @@ mean balanced accuracy on the CV folds (pred_cv_val.csv) and never on the test s
 The adjusted predictions are written as a new run (results/<run>_la/fold<k>/) in the
 same format as train_classifier.py, so compare_runs.py can include it.
 
-    python posthoc_logit_adjustment.py resnet50_ce
-    python compare_runs.py resnet50_ce resnet50_ce_la resnet50_wce
+    python scripts/posthoc_logit_adjustment.py resnet50_ce
+    python scripts/compare_runs.py resnet50_ce resnet50_ce_la resnet50_wce
 """
+import sys
 import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic.data import CLASSES, add_cv_folds, class_counts, load_split
 from isic.engine import save_json, save_predictions
 from isic.metrics import compute_metrics
 
-HWX_DIR = Path(__file__).resolve().parent
+HWX_DIR = Path(__file__).resolve().parents[1]
 SPLITS = ["cv_val", "official_val", "official_test"]
 
 

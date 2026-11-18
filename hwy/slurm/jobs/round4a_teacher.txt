@@ -1,0 +1,6 @@
+# HW Y round 4 (node A): out-of-fold teacher on 16 stored views per training image, one job per CV fold. research/plan.md
+teacher_views-fold0 python -u scripts/teacher_views.py predict --out results/teacher_views/bb5_rect_v16 --fold 0 --num-workers 16
+teacher_views-fold1 python -u scripts/teacher_views.py predict --out results/teacher_views/bb5_rect_v16 --fold 1 --num-workers 16
+teacher_views-fold2 python -u scripts/teacher_views.py predict --out results/teacher_views/bb5_rect_v16 --fold 2 --num-workers 16
+teacher_views-fold3 python -u scripts/teacher_views.py predict --out results/teacher_views/bb5_rect_v16 --fold 3 --num-workers 16
+teacher_views-fold4 python -u scripts/teacher_views.py predict --out results/teacher_views/bb5_rect_v16 --fold 4 --num-workers 16

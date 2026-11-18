@@ -7,9 +7,10 @@ The result is written as a new run, results/<run>_tta<views>/fold<k>/, in the sa
 format as train_classifier.py, so posthoc_logit_adjustment.py and compare_runs.py
 work on it unchanged.
 
-    python evaluate_tta.py resnet50_ce --crops 1     # 4 views  -> results/resnet50_ce_tta4
-    python evaluate_tta.py resnet50_ce --crops 5     # 20 views -> results/resnet50_ce_tta20
+    python scripts/evaluate_tta.py resnet50_ce --crops 1     # 4 views  -> results/resnet50_ce_tta4
+    python scripts/evaluate_tta.py resnet50_ce --crops 5     # 20 views -> results/resnet50_ce_tta20
 """
+import sys
 import argparse
 import json
 import os
@@ -18,12 +19,13 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic.data import CLASSES, ISICDataset, TTAViews, add_cv_folds, load_split
 from isic.engine import get_device, predict, save_json, save_predictions
 from isic.metrics import compute_metrics, format_metrics
 from isic.models import build_model
 
-HWX_DIR = Path(__file__).resolve().parent
+HWX_DIR = Path(__file__).resolve().parents[1]
 
 
 def main():

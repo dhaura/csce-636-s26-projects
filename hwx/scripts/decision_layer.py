@@ -9,10 +9,11 @@ and scored on fold k (nested CV, used for selection). The same layer is applied 
 models' test predictions (reporting only). `--save METHOD` writes that method as a new run under
 results/ (fold-wise, like any other run) so compare_runs.py and the notebooks can use it.
 
-    python decision_layer.py --members resnet50_ce_res448_tta20 convnext_s_res448_tta20 effv2_s_res448_tta20 \
+    python scripts/decision_layer.py --members resnet50_ce_res448_tta20 convnext_s_res448_tta20 effv2_s_res448_tta20 \
         dinov2_b14_res448_tta20 vit_b16_res448_tta20 --tag bb5
-    python decision_layer.py ... --tag bb5 --save calib_bias
+    python scripts/decision_layer.py ... --tag bb5 --save calib_bias
 """
+import sys
 import argparse
 import json
 import time
@@ -21,13 +22,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # hwx/, so the isic package imports
 from isic.data import CLASSES, add_cv_folds, class_counts, load_split
 from isic.decision import (EPS, balanced_accuracy, fit_class_bias, fit_stacker, fit_tau, fit_temperature,
                            log_softmax)
 from isic.engine import save_json, save_predictions
 from isic.metrics import compute_metrics
 
-HWX_DIR = Path(__file__).resolve().parent
+HWX_DIR = Path(__file__).resolve().parents[1]
 R = HWX_DIR / "results"
 NC = len(CLASSES)
 SPLITS = ["cv_val", "official_val", "official_test"]

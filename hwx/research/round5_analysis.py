@@ -20,7 +20,7 @@ MARGIN = 0.005
 
 for run in RUNS.values():
     if not (A.RESULTS / f"{run}_tta20_la").exists():
-        subprocess.run([sys.executable, "posthoc_logit_adjustment.py", f"{run}_tta20"], cwd=HWX, check=True, capture_output=True)
+        subprocess.run([sys.executable, "scripts/posthoc_logit_adjustment.py", f"{run}_tta20"], cwd=HWX, check=True, capture_output=True)
 
 print(f"{'variant':<48s} {'tau':>4s} {'CV':>7s} {'CV paired vs base':>24s} {'non-inferior':>12s} | {'TEST':>7s} {'TEST paired':>22s} {'AUC paired':>22s} {'MEL paired':>22s} | 5-model")
 b_cv, b_te = A.per_fold(BASE, "cv_val").bal_acc.mean(), A.per_fold(BASE).bal_acc.mean()
