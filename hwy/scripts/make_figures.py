@@ -272,6 +272,211 @@ def fig07_views():
 
 
 # ---------------------------------------------------------------------------------------------
+# Examples and failure cases: baseline (HW X single network) vs the HW Y model (consistent distillation, α 0.5).
+# Every count uses the 5 fold models separately (each one network), so "k/5" = how many fold models got the image right.
+HWY_RUN = CONS_RUN
+
+
+def test_probs(run):
+    """images, labels, probabilities (5 fold models, N, 7) on the official test set."""
+    ps = [pd.read_csv(A.RESULTS / run / f"fold{k}" / "pred_official_test.csv") for k in range(5)]
+    return ps[0]["image"].to_numpy(), ps[0]["label"].map(CLASSES.index).to_numpy(), np.stack([p[CLASSES].to_numpy() for p in ps])
+
+
+def _changes():
+    imgs, y, pb = test_probs(BASE_RUN)
+    imgs2, _, pc = test_probs(HWY_RUN)
+    assert (imgs == imgs2).all()
+    nb, nc = (pb.argmax(2) == y).sum(0), (pc.argmax(2) == y).sum(0)
+    return imgs, y, pb, pc, nb, nc
+
+
+def _show(ax, path, title, edge=None):
+    ax.imshow(Image.open(path).convert("RGB")); ax.set_xticks([]); ax.set_yticks([])
+    for s in ax.spines.values():
+        s.set_visible(edge is not None); s.set_color(edge or BASE); s.set_linewidth(3)
+    ax.set_title(title, fontsize=10.5, color=INK, linespacing=1.35)
+
+
+def _pick(order, y, per_class, n):
+    out, seen = [], {}
+    for i in order:
+        if seen.get(y[i], 0) < per_class:
+            out.append(i); seen[y[i]] = seen.get(y[i], 0) + 1
+        if len(out) == n:
+            break
+    return out
+
+
+def fig10_confusion():
+    imgs, y, pb, pc, _, _ = _changes()
+    mats = []
+    for p in (pb, pc):
+        cm = np.zeros((7, 7))
+        for k in range(5):
+            np.add.at(cm, (y, p[k].argmax(1)), 1)
+        mats.append(cm / cm.sum(1, keepdims=True))
+    fig, axes = plt.subplots(1, 3, figsize=(19, 6.4), gridspec_kw={"wspace": 0.28})
+    titles = [f"Baseline (HW X single network)\nbalanced accuracy {np.diag(mats[0]).mean():.3f}",
+              f"HW Y model (consistent distillation)\nbalanced accuracy {np.diag(mats[1]).mean():.3f}",
+              "Change (HW Y − baseline), percentage points\nblue = more of the row's images go here"]
+    diff = (mats[1] - mats[0]) * 100
+    for j, (ax, t) in enumerate(zip(axes, titles)):
+        if j < 2:
+            m = mats[j]; ax.imshow(m, cmap="Blues", vmin=0, vmax=1)
+            for a in range(7):
+                for b in range(7):
+                    if m[a, b] >= 0.005:
+                        ax.text(b, a, f"{m[a, b] * 100:.0f}", ha="center", va="center", fontsize=10.5, color="white" if m[a, b] > 0.55 else INK)
+        else:
+            ax.imshow(diff, cmap="RdBu", vmin=-6, vmax=6)
+            for a in range(7):
+                for b in range(7):
+                    if abs(diff[a, b]) >= 0.5:
+                        ax.text(b, a, f"{diff[a, b]:+.0f}", ha="center", va="center", fontsize=10.5, color="white" if abs(diff[a, b]) > 4.5 else INK)
+        ax.set_xticks(range(7), CLASSES); ax.set_yticks(range(7), CLASSES); ax.tick_params(colors=INK, length=0)
+        ax.set_xlabel("predicted"); ax.set_ylabel("true"); ax.set_title(t, loc="left", fontsize=13)
+        for s in ax.spines.values():
+            s.set_visible(False)
+    fig.text(0.01, -0.03, "Official test set (1,512 images); each cell = % of the true class, pooled over the 5 fold models (each one network). "
+             "The diagonal of the change panel is the recall gain: DF, VASC, BKL and AKIEC go up; NV and BCC give up a little.",
+             fontsize=10.5, color=INK2)
+    save(fig, "fig10_confusion")
+
+
+def fig11_changed():
+    imgs, y, pb, pc, nb, nc = _changes()
+    path = load_split("test").set_index("image").path
+    gain = (nc - nb) + 0.01 * (pc.mean(0)[np.arange(len(y)), y] - pb.mean(0)[np.arange(len(y)), y])
+    fixed = _pick(np.argsort(-gain), y, 2, 6)
+    broken = _pick(np.argsort(gain), y, 3, 6)
+    fig, axes = plt.subplots(2, 6, figsize=(18, 8.2))
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.80, bottom=0.07, wspace=0.07, hspace=0.62)
+    for row, picks, col in ((0, fixed, AQUA), (1, broken, ORANGE)):
+        for ax, i in zip(axes[row], picks):
+            called_b = CLASSES[np.bincount(pb[:, i].argmax(1), minlength=7).argmax()]
+            called_c = CLASSES[np.bincount(pc[:, i].argmax(1), minlength=7).argmax()]
+            _show(ax, path[imgs[i]], f"true {CLASSES[y[i]]}\nbaseline {nb[i]}/5 right (calls {called_b})\nHW Y {nc[i]}/5 right (calls {called_c})", col)
+    is_fix, is_brk = (nb <= 2) & (nc >= 3), (nb >= 3) & (nc <= 2)
+    fig.text(0.01, 0.905, f"Fixed by consistent distillation ({int(is_fix.sum())} images flip from a majority wrong to a majority right)",
+             fontsize=13, fontweight="bold", color=INK)
+    fig.text(0.01, 0.455, f"Broken by it ({int(is_brk.sum())} images flip the other way)", fontsize=13, fontweight="bold", color=INK)
+    fig.suptitle("What changed on the test set: the HW Y model vs the baseline, image by image", x=0.01, ha="left", fontsize=15, fontweight="bold", y=1.0)
+    by_f = pd.Series([CLASSES[k] for k in y[is_fix]]).value_counts()
+    by_b = pd.Series([CLASSES[k] for k in y[is_brk]]).value_counts()
+    fig.text(0.01, -0.02, "k/5 = how many of the 5 fold models (each one network) classify the image correctly. Fixed: " +
+             ", ".join(f"{c} {v}" for c, v in by_f.items()) + ".  Broken: " + ", ".join(f"{c} {v}" for c, v in by_b.items()) +
+             ".\nMore images break than get fixed, but the breaks are mostly moles (NV, 909 test images: one image = 0.1 points of NV recall), while each "
+             "DF fix is worth 2.3 points of DF recall (44 images). Balanced accuracy weights every class equally, so the trade is a net gain.",
+             fontsize=10.5, color=INK2, linespacing=1.5)
+    save(fig, "fig11_changed", pdf=False)
+
+
+def fig12_hard_cases():
+    imgs, y, pb, pc, nb, nc = _changes()
+    path = load_split("test").set_index("image").path
+    both = np.where((nb == 0) & (nc == 0))[0]
+    pm = pc.mean(0)
+    picks = []
+    for c, n in (("MEL", 4), ("NV", 2), ("BKL", 2), ("BCC", 2), ("AKIEC", 1), ("DF", 1)):
+        ci = CLASSES.index(c); cand = both[y[both] == ci]
+        picks += list(cand[np.argsort(-pm[cand].max(1))][:n])
+    fig, axes = plt.subplots(2, 6, figsize=(18, 7.0))
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.86, bottom=0.07, wspace=0.07, hspace=0.32)
+    for ax, i in zip(axes.ravel(), picks):
+        k = pm[i].argmax()
+        _show(ax, path[imgs[i]], f"true {CLASSES[y[i]]} · called {CLASSES[k]} ({pm[i, k]:.0%})\nP(true class) {pm[i, y[i]]:.0%}", ORANGE)
+    by = pd.Series([CLASSES[i] for i in y[both]]).value_counts()
+    mel = CLASSES.index("MEL"); mel_both = both[y[both] == mel]
+    called = pd.Series([CLASSES[k] for k in pm[mel_both].argmax(1)]).value_counts()
+    fig.suptitle(f"Still wrong: {len(both)} test images ({len(both) / len(y):.1%}) that all 10 fold models of both networks miss",
+                 x=0.01, ha="left", fontsize=15, fontweight="bold", y=1.0)
+    fig.text(0.01, -0.02, "Shown: the ones the HW Y model is surest about, per class (mean of its 5 fold models). By true class: " +
+             ", ".join(f"{c} {v}" for c, v in by.items()) +
+             f".\n{len(mel_both)} of the {int((y == mel).sum())} test melanomas are missed by every model; the HW Y model calls them " +
+             ", ".join(f"{c} {v}" for c, v in called.items()) + ". Some are repeat photos of one lesion (the two 'VASC' melanomas).",
+             fontsize=10.5, color=INK2, linespacing=1.5)
+    save(fig, "fig12_hard_cases", pdf=False)
+
+
+def fig13_gradcam():
+    import torch
+    from isic.data import baseline_transforms
+    from isic.models import build_model
+
+    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    nets = []
+    for name, run in (("Baseline (448 × 448 centre crop)", BASE_RUN.replace("_tta20_la", "")), ("HW Y (448 × 600 full frame)", HWY_RUN.replace("_tta20_la", ""))):
+        cfg = json.loads((A.RESULTS / run / "fold0" / "metrics.json").read_text())["config"]
+        m = build_model(cfg["model"], 7, cfg["img_size"], pretrained=False)
+        m.load_state_dict(torch.load(A.RESULTS / run / "fold0" / "best.pt", map_location="cpu")); m.eval().to(dev)
+        store = {}
+        m.stages[-1].register_forward_hook(lambda mod, i, o, s=store: s.__setitem__("act", o))
+        m.stages[-1].register_full_backward_hook(lambda mod, gi, go, s=store: s.__setitem__("grad", go[0]))
+        _, tf = baseline_transforms(cfg["img_size"], cfg["resize"], width=cfg.get("img_width"))
+        nets.append((name, m, store, tf))
+
+    imgs, y, pb, pc, nb, nc = _changes()
+    path = load_split("test").set_index("image").path
+    gain = (nc - nb) + 0.01 * (pc.mean(0)[np.arange(len(y)), y] - pb.mean(0)[np.arange(len(y)), y])
+    mel = CLASSES.index("MEL")
+
+    @torch.no_grad()
+    def centre_pred(i):
+        img = Image.open(path[imgs[i]]).convert("RGB")
+        return [int(m(tf(img).unsqueeze(0).to(dev)).argmax(1)) for _, m, _, tf in nets]
+
+    def first(cands, want, n=1):
+        """first n candidates whose fold-0 centre-view (baseline right?, HW Y right?) equals want"""
+        out = []
+        for i in cands:
+            b, c = centre_pred(i)
+            if ((b == y[i]), (c == y[i])) == want:
+                out.append(int(i))
+                if len(out) == n:
+                    break
+        return out
+
+    ok = np.where((nb == 5) & (nc == 5) & (y == mel))[0]
+    bad = np.where((nb == 0) & (nc == 0) & (y == mel))[0]
+    fixed = first([i for i in np.argsort(-gain) if gain[i] > 0 and y[i] != CLASSES.index("NV")], (False, True), 2)
+    picks = [(first(ok[np.argsort(-pc.mean(0)[ok, mel])], (True, True))[0], "both right"),
+             *[(i, "fixed") for i in fixed],
+             (first([i for i in np.argsort(gain) if gain[i] < 0], (True, False))[0], "broken"),
+             (first(bad[np.argsort(-pc.mean(0)[bad].max(1))], (False, False))[0], "both wrong")]
+
+    fig, axes = plt.subplots(2, len(picks), figsize=(3.9 * len(picks), 6.9))
+    fig.subplots_adjust(left=0.04, right=0.99, top=0.84, bottom=0.07, wspace=0.06, hspace=0.32)
+    mean, std = np.array(IMAGENET_MEAN), np.array(IMAGENET_STD)
+    for j, (i, lab) in enumerate(picks):
+        img = Image.open(path[imgs[i]]).convert("RGB")
+        for r, (name, m, store, tf) in enumerate(nets):
+            x = tf(img).unsqueeze(0).to(dev).requires_grad_(True)
+            logits = m(x); cls = int(logits.argmax(1))
+            m.zero_grad(); logits[0, cls].backward()
+            a, g = store["act"][0], store["grad"][0]
+            cam = torch.relu((g.mean((1, 2), keepdim=True) * a).sum(0)).detach().cpu().numpy()
+            cam = np.array(Image.fromarray(cam / (cam.max() + 1e-8)).resize((x.shape[-1], x.shape[-2]), Image.BILINEAR))
+            rgb = np.clip(x[0].detach().cpu().numpy().transpose(1, 2, 0) * std + mean, 0, 1)
+            ax = axes[r, j]
+            heat = plt.get_cmap("magma")(cam); heat[..., 3] = 0.8 * cam ** 1.2   # transparent where the heat is low
+            ax.imshow(rgb); ax.imshow(heat); ax.set_xticks([]); ax.set_yticks([])
+            for s in ax.spines.values():
+                s.set_visible(True); s.set_color(AQUA if cls == y[i] else ORANGE); s.set_linewidth(3)
+            head = f"{lab}: true {CLASSES[y[i]]}\n" if r == 0 else ""
+            ax.set_title(f"{head}predicts {CLASSES[cls]} ({torch.softmax(logits, 1)[0, cls].item():.0%})", fontsize=10.5, color=INK, linespacing=1.35)
+    for r, (name, *_rest) in enumerate(nets):
+        axes[r, 0].set_ylabel(name, fontsize=11, color=INK2)
+    fig.suptitle("Where each network looks (Grad-CAM, fold-0 model, one centre view)", x=0.01, ha="left", fontsize=15, fontweight="bold", y=1.0)
+    fig.text(0.01, -0.03, "Bright = raises the predicted class's score (last ConvNeXt stage). Green frame = correct, orange = wrong. "
+             "Each network sees its own input: the baseline a square centre crop, the HW Y model the full frame.\n"
+             "The maps are patchy for both networks and show no consistent difference, so Grad-CAM does not explain the gain. On the shared miss "
+             "both look at the lesion itself (a bleeding melanoma that resembles a vascular lesion): that error is about appearance, not attention.",
+             fontsize=10.5, color=INK2, linespacing=1.5)
+    save(fig, "fig13_gradcam", pdf=False)
+
+
+# ---------------------------------------------------------------------------------------------
 # Architecture diagrams: the pretrained backbone is one grey block; what Homework Y added is highlighted.
 KIND = {"data": ("#FDFCF9", BASE), "op": ("#E8F0FB", BLUE), "backbone": ("#E9EAEC", "#9AA0A8"), "ours": ("#F3E3EA", ACCENT)}
 
@@ -368,7 +573,8 @@ def fig09_arch_final():
 
 
 FIGS = {"fig01": fig01_ladder, "fig02": fig02_all_changes, "fig03": fig03_consistent_vs_fixed, "fig04": fig04_seed_noise,
-        "fig05": fig05_cv_vs_test, "fig06": fig06_recall, "fig07": fig07_views, "fig08": fig08_arch_consistent, "fig09": fig09_arch_final}
+        "fig05": fig05_cv_vs_test, "fig06": fig06_recall, "fig07": fig07_views, "fig08": fig08_arch_consistent, "fig09": fig09_arch_final,
+        "fig10": fig10_confusion, "fig11": fig11_changed, "fig12": fig12_hard_cases, "fig13": fig13_gradcam}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

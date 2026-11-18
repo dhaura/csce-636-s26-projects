@@ -147,3 +147,7 @@ test **0.870** (95% CI 0.845–0.893), +0.006 over the baseline. The 0.88 target
 | `fig07_views` | one melanoma's stored views and the teacher's per-view P(MEL) |
 | `fig08_arch_consistent` | fixed vs consistent distillation targets (diagram) |
 | `fig09_arch_final` | the HW Y single model, training and prediction (diagram) |
+| `fig10_confusion` | test confusion matrices, baseline vs HW Y model, and their difference |
+| `fig11_changed` | test images fixed (18) and broken (42) by consistent distillation, majority of 5 fold models |
+| `fig12_hard_cases` | failure cases: 134 test images all 10 fold models of both networks miss |
+| `fig13_gradcam` | Grad-CAM of both networks (fold 0) on right, fixed, broken and shared-miss images (needs a GPU or ~1 min CPU) |
