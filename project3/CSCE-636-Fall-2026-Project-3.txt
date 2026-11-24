@@ -1,0 +1,90 @@
+CSCE 636 Fall 2026 Project 3
+Deep Neural Network for Decoding Noisy Codeword
+
+TASK AND MATERIALS
+Design and train DNN decoders for the six fixed codes in CSCE-636-Project-3.docx.
+Read that complete project specification for the mathematical definitions,
+sampling rules, required interface, permitted methods, and grading requirements.
+
+Code 1 and Code 2 use the matrices and uniform-noise sampling rules specified
+for them in the project document. Code 3 through Code 6 use their separately
+specified sampling procedure. Do not apply the Code 3-6 procedure to Code 1-2.
+
+For Code 3-6, codes_3_to_6.pkl supplies a dictionary with keys code_3, code_4,
+code_5, and code_6. Each entry has G (a NumPy array) and Delta. Their (n,k)
+values are (16,8), (20,10), (40,20), and (80,40); delta is 1 for all four, and Delta are as specified in the file.
+The fixed UME counts are 4, 5, 10, and 20 respectively. Use the exact stored
+matrix values. Generate your own training data according to the project docx file,
+including the sample-group mixture and joint random shuffle.
+
+EXAMPLE FILES
+The following twelve files illustrate the input and output formats:
+  Noisy-Codeword-Examples-for-Code-1.pkl
+  Decode-results-examples-for-code-1.pkl
+  Noisy-Codeword-Examples-for-Code-2.pkl
+  Decode-results-examples-for-code-2.pkl
+  Noisy-Codeword-Examples-for-Code-3.pkl
+  Decode-results-examples-for-code-3.pkl
+  Noisy-Codeword-Examples-for-Code-4.pkl
+  Decode-results-examples-for-code-4.pkl
+  Noisy-Codeword-Examples-for-Code-5.pkl
+  Decode-results-examples-for-code-5.pkl
+  Noisy-Codeword-Examples-for-Code-6.pkl
+  Decode-results-examples-for-code-6.pkl
+
+Each input file contains 1,000 samples. All files use pickle.dump/pickle.load.
+An input is a Python list of lists of finite real numbers. The inner-list
+lengths for Codes 1-6 are 10, 16, 16, 20, 40, and 80 respectively.
+An output is a Python list of sets of integer UME locations. Locations start
+at 0 and end at n-1. Empty output for one sample is set(). Boolean values
+and floating-point values are not valid location indices. Preserve sample order
+and return exactly one set per input. Select the code by its number, not by
+input length: Code 2 and Code 3 both have length 16 but are different codes.
+
+These are format examples, not a supplied training set. An example output
+is one permitted answer. Exact equality to that example is not required:
+all UME positions with magnitude greater than Delta must be reported;
+nonzero UME positions at or below Delta may be reported or omitted;
+positions with no UME must not be reported. Incorrect but properly formatted
+answers lower accuracy. ANY invalid output format or location makes the
+whole project receive zero points, as specified in the project document.
+
+MODEL AND NOTEBOOK SUBMISSION
+Due: 11:59pm Central Time on Tuesday, December 1, 2026, in Canvas.
+Submit trained DNNs/weights for all six codes and a complete Google Colab
+Jupyter Notebook. Its final cell must load the submitted weights, read the
+six test input files, and generate six correctly formatted output files
+without retraining or code modification. Follow all other requirements in
+the project specification, including its whole-project-zero conditions.
+
+SAMPLE TEST SET AND VERIFICATION SUBMISSION
+By Wednesday, December 2, 2026, these files will be posted in Canvas:
+  Noisy-Codeword-Test-for-Code-1.pkl
+  Noisy-Codeword-Test-for-Code-2.pkl
+  Noisy-Codeword-Test-for-Code-3.pkl
+  Noisy-Codeword-Test-for-Code-4.pkl
+  Noisy-Codeword-Test-for-Code-5.pkl
+  Noisy-Codeword-Test-for-Code-6.pkl
+
+Run your already-submitted models WITHOUT ANY change to the models.
+Save the six corresponding output lists with pickle.dump using these names:
+  Decode-Results-Test-for-Code-1.pkl
+  Decode-Results-Test-for-Code-2.pkl
+  Decode-Results-Test-for-Code-3.pkl
+  Decode-Results-Test-for-Code-4.pkl
+  Decode-Results-Test-for-Code-5.pkl
+  Decode-Results-Test-for-Code-6.pkl
+
+Submit all six prediction files in Canvas by Thursday, December 3, 2026.
+The Sample Test Set is part of the test set used to evaluate your models.
+Your predictions will be compared with our results from your submitted models.
+If ANY change is detected between the output of your submitted model and
+your submitted results for the Sample Test Set, the project receives 0 points.
+Without the required six prediction files, the project receives 0 points.
+
+GRADING
+Compute accuracy separately for each code and apply the per-code score
+adjustment in the project specification. The Model Score is the equal-weight
+average of the six adjusted scores. Final score = 90% Model Score + 10%
+Notebook Report Score. All whole-project-zero rules remain applicable;
+ineligible submissions do not receive the adjusted model-score floor.

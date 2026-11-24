@@ -1,0 +1,27 @@
+Project: Decode Noisy Codeword. 
+
+Due: 11:59pm (Central Time) on Tuesday 12/1/2026 in Canvas. (Please submit your trained DNNs and Jupyter notebook in Canvas.)
+
+We provide example files in the "Files" section in Canvas:
+
+1) The file named "Noisy-Codeword-Examples-for-Code-1.pkl"
+
+2) The file named "Noisy-Codeword-Examples-for-Code-2.pkl"
+
+3) The file named "Decode-results-examples-for-code-1.pkl"
+
+4) The file named "Decode-results-examples-for-code-2.pkl"
+
+Each file contains a list saved using pickle.dump(), which you can open using pickle.load(). Each noisy-codeword example file contains 1,000 samples. In the list of the file "Noisy-Codeword-Examples-for-Code-1.pkl", each sample is a list of 10 real numbers. In the list of the file "Noisy-Codeword-Examples-for-Code-2.pkl", each sample is a list of 16 real numbers.
+
+In each decode-results example file, each element is a Python set of integers representing UME locations. The locations are indexed starting from 0: for Code 1, the possible locations are 0, 1, ..., 9; for Code 2, the possible locations are 0, 1, ..., 15. An empty set is represented by set(). For r=0,1,2,..., the r-th set in the list of the file "Decode-results-examples-for-code-1.pkl" corresponds to the r-th sample in the list of the file "Noisy-Codeword-Examples-for-Code-1.pkl". The same correspondence applies to the two example files for Code 2.
+
+These files illustrate the input and output formats. You should generate your own training samples following the project description. MAKE SURE that your submitted code works with the test set, and outputs a list of corresponding predicted UME locations that has EXACTLY THE SAME FORMAT as the list in the corresponding decode-results example file.
+
+===============================
+
+After the submission deadline of 12/1/2026 (for submitting your trained DNNs and Jupyter notebook), here is the next step:
+
+To ensure correct grading of your submitted model, a Sample Test Set of two files named "Noisy-Codeword-Test-for-Code-1.pkl" and "Noisy-Codeword-Test-for-Code-2.pkl" will be posted in the "Files" section in Canvas by Wednesday 12/2/2026. Please run your already-submitted model for this project (without ANY change to the model) on the posted Sample Test Set to get the lists of corresponding predicted UME locations, save the two lists (for the two codes) as two files named "Decode-Results-Test-for-Code-1.pkl" and "Decode-Results-Test-for-Code-2.pkl" using pickle.dump(), and submit the two files in Canvas. (The posted Sample Test Set is a part of the test set used to evaluate your models. Your submitted results --- namely, the UME locations predicted by your model for this project -- will be compared to our testing results on your model for verification. If ANY change is detected between "the output of the submitted model" and "the submitted results for the sample test set", the project will receive 0 point.)
+
+What to submit: Save the two lists of UME locations (which are your model's predicted UME locations for the Sample Test Set) as two files named "Decode-Results-Test-for-Code-1.pkl" and "Decode-Results-Test-for-Code-2.pkl" using pickle.dump(). Submit the above two files in Canvas by Thursday 12/3/2026. (Note: without these files, the project will receive 0 point.)
